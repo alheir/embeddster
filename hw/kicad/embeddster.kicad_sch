@@ -733,6 +733,485 @@
 			)
 			(embedded_fonts no)
 		)
+		(symbol "PLACA_CAN_V20190517:PLACA_CAN_V20190517"
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "U"
+				(at -10.414 2.794 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "PLACA_CAN_V20190517"
+				(at 0 0.508 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" "PLACA_CAN_V20190517:PLACA_CAN_V20190517"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "PLACA_CAN_V20190517_0_1"
+				(rectangle
+					(start -10.16 -1.27)
+					(end 8.89 -31.75)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "PLACA_CAN_V20190517_1_1"
+				(text_box "Para funcionar la PlacaCAN necesita 2 alimentaciones: VIO y 5V.\n-> VIO: Alimentación de la parte lógica, puede ser 2,7V, 3,3V o 5V, de acuerdo a la tensión del SPI.\n-> 5V: Alimentación del tranceiver e interfaz CAN.\n---\nExisten otras alimentaciones, que pueden ser utilizadas o no para generar las anteriores:\n-> VCAN: Alimentación que transporta el conector CAN. Puede ser 5V o la tensión de una batería\n(entre 8 y 14V).\n-> VREG5: Salida de un regulador de tensión lineal de 5V, obtenida de VCAN.\n-> VREGIO: Salida de un regulador de tensión lineal de 3,3V, obtenida de 5V.\n---\nEs posible tanto alimentar al MCU desde la PlacaCAN, como alimentar la PlacaCAN desde el MCU."
+					(at -24.13 -34.29 0)
+					(size 52.07 -12.7)
+					(margins 1.016 1.016 1.016 1.016)
+					(stroke
+						(width 0)
+						(type solid)
+					)
+					(fill
+						(type none)
+					)
+					(effects
+						(font
+							(face "Consolas")
+							(size 0.635 0.635)
+						)
+						(justify left top)
+					)
+				)
+				(pin power_in line
+					(at -12.7 -3.81 0)
+					(length 2.54)
+					(name "GND"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at -12.7 -6.35 0)
+					(length 2.54)
+					(name "VIO"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin output inverted
+					(at -12.7 -8.89 0)
+					(length 2.54)
+					(name "INT"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "3"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin input clock
+					(at -12.7 -11.43 0)
+					(length 2.54)
+					(name "SCK"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "4"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at -12.7 -13.97 0)
+					(length 2.54)
+					(name "MOSI"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "5"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin output line
+					(at -12.7 -16.51 0)
+					(length 2.54)
+					(name "MISO"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "6"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin input inverted
+					(at -12.7 -19.05 0)
+					(length 2.54)
+					(name "CS"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "7"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin input inverted
+					(at -12.7 -21.59 0)
+					(length 2.54)
+					(name "RESET"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "8"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at -12.7 -24.13 0)
+					(length 2.54)
+					(name "TXD"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "9"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin output line
+					(at -12.7 -26.67 0)
+					(length 2.54)
+					(name "RXD"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "10"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at -12.7 -29.21 0)
+					(length 2.54)
+					(name "GND"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "11"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at 11.43 -3.81 180)
+					(length 2.54)
+					(name "GND"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "22"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at 11.43 -6.35 180)
+					(length 2.54)
+					(name "5V"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "21"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin output inverted
+					(at 11.43 -8.89 180)
+					(length 2.54)
+					(name "RX0BF"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "20"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin output inverted
+					(at 11.43 -11.43 180)
+					(length 2.54)
+					(name "RX1BF"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "19"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin input inverted
+					(at 11.43 -13.97 180)
+					(length 2.54)
+					(name "TX2RTS"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "18"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin input inverted
+					(at 11.43 -16.51 180)
+					(length 2.54)
+					(name "TX1RTS"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "17"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin input inverted
+					(at 11.43 -19.05 180)
+					(length 2.54)
+					(name "TX0RTS"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "16"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at 11.43 -21.59 180)
+					(length 2.54)
+					(name "STBY"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "15"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin output clock
+					(at 11.43 -24.13 180)
+					(length 2.54)
+					(name "CLKOUT"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "14"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at 11.43 -26.67 180)
+					(length 2.54)
+					(name "VCAN"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "13"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at 11.43 -29.21 180)
+					(length 2.54)
+					(name "GND"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "12"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
 	)
 	(symbol
 		(lib_id "ESP32-DEVKIT-V1:ESP32-DEVKIT-V1")
@@ -1002,6 +1481,134 @@
 			(project ""
 				(path "/ce96a9a7-c6cd-448d-a47b-e48e55834808"
 					(reference "U1")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "PLACA_CAN_V20190517:PLACA_CAN_V20190517")
+		(at 57.15 27.94 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "e2de3e50-ad03-4fd0-be64-173b516aa55b")
+		(property "Reference" "U2"
+			(at 59.055 24.13 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "PLACA_CAN_V20190517"
+			(at 59.055 26.67 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "PLACA_CAN_V20190517:PLACA_CAN_V20190517"
+			(at 57.15 27.94 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 57.15 27.94 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 57.15 27.94 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "7"
+			(uuid "4ded574c-7664-40a4-b8c7-1412f4ae9e79")
+		)
+		(pin "20"
+			(uuid "b54133da-5c28-48b7-8e87-f6cbd424cde2")
+		)
+		(pin "19"
+			(uuid "fc26a35f-dae6-4d7d-869b-c370ec449b26")
+		)
+		(pin "21"
+			(uuid "1b40e0d1-13a7-4b76-8288-00309bed0208")
+		)
+		(pin "2"
+			(uuid "aa8eb96c-6356-4bf6-bf31-47e04f8a5983")
+		)
+		(pin "4"
+			(uuid "31e11b1d-ad8b-4c9e-ace2-13b63ca319fa")
+		)
+		(pin "13"
+			(uuid "a6d2cb8b-a231-4898-8583-c628f7109c49")
+		)
+		(pin "22"
+			(uuid "e1bd6a23-8fef-442d-ae46-4e65538fb75c")
+		)
+		(pin "17"
+			(uuid "a5687f76-667c-4e93-a7e1-3b7255a6f558")
+		)
+		(pin "1"
+			(uuid "42cf2b42-dac2-47fc-9474-79c96e1f0d23")
+		)
+		(pin "5"
+			(uuid "a8f2c408-003a-4199-a466-a0229aafb51a")
+		)
+		(pin "18"
+			(uuid "18f1fe7e-ccd6-43e1-aa75-600c0aa739f1")
+		)
+		(pin "15"
+			(uuid "bb3b80a8-90d1-4707-8675-7bea29ef7003")
+		)
+		(pin "16"
+			(uuid "fc9b4732-29bb-442c-8f7f-c5185dbb10c3")
+		)
+		(pin "3"
+			(uuid "a0f26e92-6f61-43b4-a407-1a52228ad699")
+		)
+		(pin "14"
+			(uuid "fa203fb9-4d7c-4f86-b85f-0a9e161bfdf0")
+		)
+		(pin "6"
+			(uuid "aec15996-9738-450b-8095-72fb23a0dcaa")
+		)
+		(pin "11"
+			(uuid "302f4a50-9c46-4419-85a8-600ac065e11c")
+		)
+		(pin "8"
+			(uuid "614d0166-4379-4fb9-8ba0-9556d21e46f7")
+		)
+		(pin "10"
+			(uuid "a755c17b-3800-4d78-89e8-f80bae15945b")
+		)
+		(pin "9"
+			(uuid "7a487184-2957-4112-9e2a-a37c1ff35c78")
+		)
+		(pin "12"
+			(uuid "75345d55-afcd-44bc-bb9d-7531dfeb2d28")
+		)
+		(instances
+			(project ""
+				(path "/ce96a9a7-c6cd-448d-a47b-e48e55834808"
+					(reference "U2")
 					(unit 1)
 				)
 			)
