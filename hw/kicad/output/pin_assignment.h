@@ -15,6 +15,7 @@
 #define PIN_ENC_A 4
 #define PIN_ENC_B 16
 #define PIN_ENC_SW 22
+#define ENC_SW_ACTIVE 0 // active low
 
 // 74HC595 control pins
 #define PIN_595_SI 32
