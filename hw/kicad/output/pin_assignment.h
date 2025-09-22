@@ -8,9 +8,12 @@
 #define PIN_MCP_nCS 5
 #define PIN_MCP_nINT 17
 
+// WS2812B
+#define PIN_NPXL 21
+
 // Encoder
-#define PIN_ENC_A 16
-#define PIN_ENC_B 21
+#define PIN_ENC_A 4
+#define PIN_ENC_B 16
 #define PIN_ENC_SW 22
 
 // 74HC595 control pins
