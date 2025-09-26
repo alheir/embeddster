@@ -11,6 +11,12 @@ Adafruit_NeoPixel npxl(NUMPIXELS, PIN_NPXL, NEO_GRB + NEO_KHZ800);
 #include <SPI.h>
 MCP_CAN CAN(PIN_MCP_nCS);
 
+#include "sr595.h"
+#define NUMSR595S 2
+SR595 SR(PIN_595_SI, PIN_595_SHIFT_CLK,
+         PIN_595_LATCH_CLK, PIN_595_nOE,
+         PIN_595_nRST, NUMSR595S);
+
 void setup()
 {
     Serial.begin(BAUD_RATE);
@@ -31,7 +37,7 @@ void setup()
 
     delay(500);
 
-    if (CAN.begin(MCP_ANY, CAN_125KBPS, MCP_16MHZ) == CAN_FAILINIT)
+    if (CAN.begin(MCP_ANY, CAN_125KBPS, MCP_8MHZ) == CAN_FAILINIT)
     {
         Serial.println("MCP/CAN init fail");
         while (1)
@@ -42,9 +48,11 @@ void setup()
     Serial.println("MCP/CAN set to normal mode");
 
     delay(500);
+
+    SR.begin();
+    Serial.println("74HC595 init ok");
 }
 
 void loop()
 {
-
 }
