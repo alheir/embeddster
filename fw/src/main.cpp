@@ -1,18 +1,50 @@
 #include <Arduino.h>
+#include "pin_assignment.h"
 
-// put function declarations here:
-int myFunction(int, int);
+#define BAUD_RATE 115200 // explicity defined in platformio.ini
 
-void setup() {
-  // put your setup code here, to run once:
-  int result = myFunction(2, 3);
+#include <Adafruit_NeoPixel.h>
+#define NUMPIXELS 1
+Adafruit_NeoPixel npxl(NUMPIXELS, PIN_NPXL, NEO_GRB + NEO_KHZ800);
+
+#include <mcp_can.h>
+#include <SPI.h>
+MCP_CAN CAN(PIN_MCP_nCS);
+
+void setup()
+{
+    Serial.begin(BAUD_RATE);
+    Serial.println("Serial init ok");
+
+    delay(500);
+
+    if (!npxl.begin())
+    {
+        Serial.println("NEOPIXEL init fail");
+        while (1)
+            ;
+    }
+    Serial.println("NEOPIXEL init ok");
+    npxl.setPixelColor(0, npxl.Color(255, 0, 0));
+    npxl.show();
+    Serial.println("NEOPIXEL set to red");
+
+    delay(500);
+
+    if (CAN.begin(MCP_ANY, CAN_125KBPS, MCP_16MHZ) == CAN_FAILINIT)
+    {
+        Serial.println("MCP/CAN init fail");
+        while (1)
+            ;
+    }
+    Serial.println("MCP/CAN init ok at 125kbps with 8MHz clock, aceptting any ID");
+    CAN.setMode(MCP_NORMAL);
+    Serial.println("MCP/CAN set to normal mode");
+
+    delay(500);
 }
 
-void loop() {
-  // put your main code here, to run repeatedly:
-}
+void loop()
+{
 
-// put function definitions here:
-int myFunction(int x, int y) {
-  return x + y;
 }
