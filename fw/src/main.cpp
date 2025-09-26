@@ -11,11 +11,8 @@ Adafruit_NeoPixel npxl(NUMPIXELS, PIN_NPXL, NEO_GRB + NEO_KHZ800);
 #include <SPI.h>
 MCP_CAN CAN(PIN_MCP_nCS);
 
-#include "sr595.h"
-#define NUMSR595S 2
-SR595 SR(PIN_595_SI, PIN_595_SHIFT_CLK,
-         PIN_595_LATCH_CLK, PIN_595_nOE,
-         PIN_595_nRST, NUMSR595S);
+#include "tp1board.h"
+TP1BOARD board;
 
 void setup()
 {
@@ -49,10 +46,13 @@ void setup()
 
     delay(500);
 
-    SR.begin();
-    Serial.println("74HC595 init ok");
+    board.begin();
+    Serial.println("TP1BOARD init ok");
 }
 
 void loop()
 {
+    // Example: Call board.refresh() periodically here if needed
+    board.refresh();
+}
 }
