@@ -34,25 +34,21 @@ void setup()
 
     delay(500);
 
-    if (CAN.begin(MCP_ANY, CAN_125KBPS, MCP_8MHZ) == CAN_FAILINIT)
+    if (CAN.begin(MCP_ANY, CAN_125KBPS, MCP_16MHZ) == CAN_FAILINIT)
     {
         Serial.println("MCP/CAN init fail");
         while (1)
             ;
     }
-    Serial.println("MCP/CAN init ok at 125kbps with 8MHz clock, aceptting any ID");
+    Serial.println("MCP/CAN init ok at 125kbps with 16MHz clock, aceptting any ID");
     CAN.setMode(MCP_NORMAL);
     Serial.println("MCP/CAN set to normal mode");
 
     delay(500);
-
-    board.begin();
-    Serial.println("TP1BOARD init ok");
 }
 
 void loop()
 {
     // Example: Call board.refresh() periodically here if needed
     board.refresh();
-}
 }
