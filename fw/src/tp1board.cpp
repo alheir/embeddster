@@ -40,7 +40,7 @@ void TP1BOARD::begin()
     pinMode(PIN_ENC_SW, INPUT_PULLUP);
 
     sr.begin();
-    sr.reset();
+    sr.reset(true);
     sr.enableOutput(true);
 }
 
@@ -60,13 +60,13 @@ void TP1BOARD::setLED(uint8_t led, bool on)
     else if (led == 1)
         bit = STATUS_1_BIT;
     else if (led == 2)
-        bit = LED_D3_BIT;
+        bit = LED_D3_W_BIT;
     else if (led == 3)
-        bit = LED_D4_BIT;
+        bit = LED_D4_Y_BIT;
     else if (led == 4)
-        bit = LED_D5_BIT;
+        bit = LED_D5_B_BIT;
     else if (led == 5)
-        bit = LED_D6_BIT;
+        bit = LED_D6_G_BIT;
 
     if (bit != 0)
     {

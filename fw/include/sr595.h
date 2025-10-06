@@ -17,7 +17,7 @@ public:
     void enableOutput(bool enable); 
 
     // resets the shift registers
-    void reset(); 
+    void reset(bool latchAfter = false); 
 
 private:
     uint8_t dataPin;

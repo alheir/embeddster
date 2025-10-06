@@ -46,9 +46,15 @@ void SR595::enableOutput(bool enable)
     digitalWrite(this->enablePin, enable ? LOW : HIGH);
 }
 
-void SR595::reset()
+void SR595::reset(bool latchAfter)
 {
     digitalWrite(this->resetPin, LOW);
     delayMicroseconds(10);
     digitalWrite(this->resetPin, HIGH);
+
+    if (latchAfter)
+    {
+        digitalWrite(this->latchPin, LOW);
+        digitalWrite(this->latchPin, HIGH);
+    }
 }
