@@ -61,13 +61,9 @@ typedef enum {
 #define SEL_1_BIT    SR_BIT(SR_QB1) // QB1
 #define STATUS_0_BIT SR_BIT(SR_QC1) // QC1
 #define STATUS_1_BIT SR_BIT(SR_QD1) // QD1
-#define LED_D3_BIT   SR_BIT(SR_QE1) // QE1
-#define LED_D4_BIT   SR_BIT(SR_QF1) // QF1
-#define LED_D5_BIT   SR_BIT(SR_QG1) // QG1
-#define LED_D6_BIT   SR_BIT(SR_QH1) // QH1
-
-// Ejemplo de uso:
-// uint16_t outputs = SEG_A_BIT | SEG_B_BIT | SEL_0_BIT;
-// shift_out_16bits(outputs); // función que hace shift/latch hacia los 74HC595
+#define LED_D3_W_BIT   SR_BIT(SR_QE1) // QE1, blanco
+#define LED_D4_Y_BIT   SR_BIT(SR_QF1) // QF1, amarillo
+#define LED_D5_B_BIT   SR_BIT(SR_QG1) // QG1, azul
+#define LED_D6_G_BIT   SR_BIT(SR_QH1) // QH1, verde
 
 #endif // PIN_ASSIGNMENT_H
