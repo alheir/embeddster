@@ -16,22 +16,27 @@ MCP_CAN CAN(PIN_MCP_nCS);
 #include "tp1board.h"
 TP1BOARD board;
 
+#define SETUP_DELAY_MS 250
+
 void do_can_sniffer();
 void do_can_random_send();
 
 void setup()
 {
     Serial.begin(BAUD_RATE);
+    Serial.println("\n\n~~~~TP1BOARD CAN SNIFFER/RANDOM SENDER~~~~\n");
     Serial.println("Serial init ok");
 
-    delay(500);
+    delay(SETUP_DELAY_MS);
+    Serial.println("\n~~~~\n");
 
     pinMode(BUTTON_BUILTIN, INPUT_PULLUP);
     pinMode(LED_BUILTIN, OUTPUT);
     digitalWrite(LED_BUILTIN, LOW);
     Serial.println("Onboard LED and button init ok");
 
-    delay(500);
+    delay(SETUP_DELAY_MS);
+    Serial.println("\n~~~~\n");
 
     if (!npxl.begin())
     {
@@ -40,12 +45,18 @@ void setup()
             ;
     }
     Serial.println("NEOPIXEL init ok");
-    npxl.setPixelColor(0, npxl.Color(255, 0, 0));
+    npxl.setPixelColor(0, npxl.Color(15, 0, 0));
     npxl.show();
     Serial.println("NEOPIXEL set to red");
 
+    delay(SETUP_DELAY_MS);
+    Serial.println("\n~~~~\n");
+
     board.begin();
     Serial.println("TP1BOARD init ok");
+
+    delay(SETUP_DELAY_MS);
+    Serial.println("\n~~~~\n");
 
     pinMode(PIN_MCP_nINT, INPUT);
     if (CAN.begin(MCP_ANY, CAN_125KBPS, MCP_16MHZ) == CAN_FAILINIT)
@@ -58,7 +69,18 @@ void setup()
     CAN.setMode(MCP_NORMAL);
     Serial.println("MCP/CAN set to normal mode");
 
-    delay(500);
+    delay(SETUP_DELAY_MS);
+    Serial.println("\n~~~~\n");
+
+    npxl.setPixelColor(0, npxl.Color(0, 15, 0));
+    npxl.show();
+    Serial.println("NEOPIXEL set to green");
+
+    delay(SETUP_DELAY_MS);
+    Serial.println("\n~~~~\n");
+
+    Serial.println("Setup complete, starting in CAN SNIFFER mode");
+    Serial.println("Press the button to switch mode to RANDOM SEND");
 }
 
 enum State
