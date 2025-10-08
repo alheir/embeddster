@@ -44,7 +44,8 @@ void setup()
     npxl.show();
     Serial.println("NEOPIXEL set to red");
 
-    delay(500);
+    board.begin();
+    Serial.println("TP1BOARD init ok");
 
     pinMode(PIN_MCP_nINT, INPUT);
     if (CAN.begin(MCP_ANY, CAN_125KBPS, MCP_16MHZ) == CAN_FAILINIT)
