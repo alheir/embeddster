@@ -143,6 +143,8 @@ void do_can_sniffer()
             Serial.print("' Len=");
             Serial.print(len);
             Serial.println();
+
+            digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
         }
         else
         {
@@ -191,6 +193,8 @@ void do_can_random_send()
                 
                 lastSend = now;
                 lastVal = val;
+
+                digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
             } else {
                 Serial.println("Error sending CAN msg");
             }
