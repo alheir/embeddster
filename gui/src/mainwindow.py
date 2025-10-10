@@ -102,6 +102,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.send_pb.clicked.connect(self.sendLEDCommand)
         self.LED_gb.setEnabled(False)
         
+        self.actionGod_mode.triggered.connect(self.open_god_mode)
+        self.god_mode_widget = None
 
     def buildStationTimeout(self, stationIndex):
         return lambda : self.disableStationInfoWidget(stationIndex)
@@ -167,6 +169,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 +self.stations[station_index].yaw + 90
             )
 
+            # if self.god_mode_widget and self.god_mode_widget.isVisible():
+            #     # Suponiendo que tienes can_id y data disponibles
+            #     can_id = ...  # Obtener el can_id correspondiente
+            #     data = ...  # Obtener los datos correspondientes
+            #     self.god_mode_widget.on_can_message_received(can_id, data)
+
     def _resolve_angle_index(self, angle_id):
         if isinstance(angle_id, int) and angle_id in (0, 1, 2):
             return angle_id
@@ -189,6 +197,27 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     continue
                 for msg in messages:
                     self.processParsedMessage(msg)
+                    
+                    # Forward to God Mode if open
+                    if self.god_mode_widget and self.god_mode_widget.isVisible():
+                        try:
+                            station_index = int(msg.get('station_index'))
+                            can_id = 0x100 + station_index
+                            
+                            # Reconstruct data bytes from angle info
+                            angle_id = msg.get('angle')
+                            value = msg.get('value')
+                            
+                            angle_index = self._resolve_angle_index(angle_id)
+                            if angle_index in (0, 1, 2):
+                                angle_char = ['R', 'C', 'O'][angle_index]
+                                data_str = f"{angle_char}{value}"
+                                data = data_str.encode('ascii')
+                                
+                                self.god_mode_widget.on_can_message_received(can_id, data)
+                        except Exception as e:
+                            logging.warning(f"[MainWindow] Error forwarding to God Mode: {e}")
+                            
         except (SerialException, OSError) as e:
             logging.error(f"[MainWindow] Error reading from serial port: {e}")
     
@@ -351,3 +380,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.app.setStyleSheet(LIGHT_THEME)
             self.current_theme = 'light'
         self.setTheme(self.current_theme)
+
+    def open_god_mode(self):
+        if self.god_mode_widget is None:
+            from src.widgets.god_mode_widget import GodModeWidget
+            self.god_mode_widget = GodModeWidget(self)
+        self.god_mode_widget.show()
+        self.god_mode_widget.raise_()
+        self.god_mode_widget.activateWindow()
