@@ -710,7 +710,7 @@ class GodModeWidget(QWidget):
                 params = state['sine_params'][angle_type]
                 value = params['amp'] * math.sin(2 * math.pi * elapsed / params['period'] + params['phase'])
                 value = int(value + params['offset'] + random.uniform(-2, 2))
-            elif mode == "Constant":
+            elif mode == "Const":
                 value = state['const_value']
             else:  # Noise
                 value = random.randint(-179, 180)
@@ -722,8 +722,11 @@ class GodModeWidget(QWidget):
             
             try:
                 self._send_can_message(can_id, data)
+                # Log cada mensaje enviado en random traffic
+                self.log_text.append(f"🎲 Random: G{group_id} {angle_type}={value:+d}° [{mode}]")
             except Exception as e:
                 logging.warning(f"Random traffic error: {e}")
+                self.log_text.append(f"❌ Random error G{group_id}: {e}")
     
     def _send_can_message(self, can_id, data):
         """Envía mensaje CAN a través de la conexión serial"""
