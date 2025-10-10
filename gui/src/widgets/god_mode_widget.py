@@ -57,7 +57,10 @@ class GodModeWidget(QWidget):
     def setup_ui(self):
         main_layout = QVBoxLayout(self)
         
-        # ===== SECCIÓN 0: CONTROL DE MODO CAN =====
+        # ===== FILA COMBINADA: CAN CONTROLLER MODE + CONTROL & FILTERS =====
+        top_controls_layout = QHBoxLayout()
+        
+        # === CAN CONTROLLER MODE (Izquierda) ===
         can_mode_group = QGroupBox("🔌 CAN Controller Mode")
         can_mode_layout = QHBoxLayout()
         
@@ -69,18 +72,10 @@ class GodModeWidget(QWidget):
         self.loopback_mode_btn.clicked.connect(lambda: self.set_can_mode("LOOPBACK"))
         can_mode_layout.addWidget(self.loopback_mode_btn)
         
-        can_mode_layout.addStretch()
-        
-        # Contador de mensajes
-        self.msg_counter_label = QLabel("📊 Messages: 0 RX / 0 TX")
-        can_mode_layout.addWidget(self.msg_counter_label)
-        self.rx_count = 0
-        self.tx_count = 0
-        
         can_mode_group.setLayout(can_mode_layout)
-        main_layout.addWidget(can_mode_group)
+        top_controls_layout.addWidget(can_mode_group)
         
-        # ===== SECCIÓN 1: CONTROL Y FILTROS =====
+        # === CONTROL Y FILTROS (Derecha) ===
         control_group = QGroupBox("⚙️ Control & Filters")
         control_layout = QHBoxLayout()
         
@@ -120,14 +115,27 @@ class GodModeWidget(QWidget):
         self.filter_line.setEnabled(False)
         control_layout.addWidget(self.filter_line)
         
+        control_layout.addWidget(QLabel("│"))
+        
+        # Contador de mensajes
+        self.msg_counter_label = QLabel("📊 Messages: 0 RX / 0 TX")
+        control_layout.addWidget(self.msg_counter_label)
+        self.rx_count = 0
+        self.tx_count = 0
+        
         control_layout.addStretch()
         control_group.setLayout(control_layout)
-        main_layout.addWidget(control_group)
+        top_controls_layout.addWidget(control_group, stretch=1)
         
-        # ===== NUEVA DISTRIBUCIÓN: FILA SUPERIOR (Station Status + Received Messages) =====
-        top_row_layout = QHBoxLayout()
+        main_layout.addLayout(top_controls_layout)
         
-        # === SECCIÓN 1.5: ESTADO DE ESTACIONES (Izquierda, ~40%) ===
+        # ===== NUEVA DISTRIBUCIÓN: DOS COLUMNAS PRINCIPALES =====
+        main_content_layout = QHBoxLayout()
+        
+        # ===== COLUMNA IZQUIERDA (40%) =====
+        left_column = QVBoxLayout()
+        
+        # === SECCIÓN 1.5: ESTADO DE ESTACIONES ===
         station_group = QGroupBox("📡 Station Status (Last Received)")
         station_layout = QVBoxLayout()
         
@@ -148,31 +156,9 @@ class GodModeWidget(QWidget):
         
         station_layout.addWidget(self.station_table)
         station_group.setLayout(station_layout)
-        top_row_layout.addWidget(station_group, stretch=2)  # 40% del ancho
+        left_column.addWidget(station_group, stretch=1)
         
-        # === SECCIÓN 2: TABLA DE MENSAJES RECIBIDOS (Derecha, ~60%) ===
-        rx_group = QGroupBox("📥 Received CAN Messages")
-        rx_layout = QVBoxLayout()
-        
-        self.rx_table = QTableWidget()
-        self.rx_table.setColumnCount(6)
-        self.rx_table.setHorizontalHeaderLabels(["#", "Timestamp", "CAN ID", "DLC", "Data (Hex)", "Data (ASCII)"])
-        self.rx_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
-        self.rx_table.horizontalHeader().setStretchLastSection(True)
-        self.rx_table.setAlternatingRowColors(True)
-        self.rx_table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.rx_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
-        
-        rx_layout.addWidget(self.rx_table)
-        rx_group.setLayout(rx_layout)
-        top_row_layout.addWidget(rx_group, stretch=3)  # 60% del ancho
-        
-        main_layout.addLayout(top_row_layout, stretch=2)  # Fila superior ocupa ~40% de la altura
-        
-        # ===== NUEVA DISTRIBUCIÓN: FILA INFERIOR (Send Messages + Detailed Log) =====
-        bottom_row_layout = QHBoxLayout()
-        
-        # === SECCIÓN 3: ENVÍO DE MENSAJES (Izquierda, ~60%) ===
+        # === SECCIÓN 3: ENVÍO DE MENSAJES (mismo ancho que Station Status) ===
         tx_group = QGroupBox("📤 Send CAN Message")
         tx_layout = QVBoxLayout()
         
@@ -333,7 +319,6 @@ class GodModeWidget(QWidget):
         
         self.random_group_modes = []
         for i in range(8):
-            var = tk.StringVar(value="Sine") if hasattr(self, 'tk') else None
             mode_combo = QComboBox()
             mode_combo.addItems(["Sine", "Const", "Noise"])
             mode_combo.setMaximumWidth(70)
@@ -368,9 +353,32 @@ class GodModeWidget(QWidget):
         
         tx_layout.addWidget(self.tx_stack)
         tx_group.setLayout(tx_layout)
-        bottom_row_layout.addWidget(tx_group, stretch=3)  # 60% del ancho
+        left_column.addWidget(tx_group, stretch=1)
         
-        # === SECCIÓN 4: LOG DETALLADO (Derecha, ~40%) ===
+        # Agregar la columna izquierda al layout principal
+        main_content_layout.addLayout(left_column, stretch=2)  # 40% del ancho
+        
+        # ===== COLUMNA DERECHA (60%) =====
+        right_column_paned = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
+        
+        # === PANEL SUPERIOR: TABLA DE MENSAJES RECIBIDOS (60% de la altura derecha) ===
+        rx_group = QGroupBox("📥 Received CAN Messages")
+        rx_layout = QVBoxLayout()
+        
+        self.rx_table = QTableWidget()
+        self.rx_table.setColumnCount(6)
+        self.rx_table.setHorizontalHeaderLabels(["#", "Timestamp", "CAN ID", "DLC", "Data (Hex)", "Data (ASCII)"])
+        self.rx_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        self.rx_table.horizontalHeader().setStretchLastSection(True)
+        self.rx_table.setAlternatingRowColors(True)
+        self.rx_table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.rx_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
+        
+        rx_layout.addWidget(self.rx_table)
+        rx_group.setLayout(rx_layout)
+        right_column_paned.addWidget(rx_group)
+        
+        # === PANEL INFERIOR: LOG DETALLADO (40% de la altura derecha) ===
         log_group = QGroupBox("📋 Detailed Log")
         log_layout = QVBoxLayout()
         
@@ -380,9 +388,16 @@ class GodModeWidget(QWidget):
         
         log_layout.addWidget(self.log_text)
         log_group.setLayout(log_layout)
-        bottom_row_layout.addWidget(log_group, stretch=2)  # 40% del ancho
+        right_column_paned.addWidget(log_group)
         
-        main_layout.addLayout(bottom_row_layout, stretch=3)  # Fila inferior ocupa ~60% de la altura
+        # Establecer proporciones iniciales del splitter (60% superior, 40% inferior)
+        right_column_paned.setStretchFactor(0, 3)  # Received messages
+        right_column_paned.setStretchFactor(1, 2)  # Detailed log
+        
+        # Agregar la columna derecha al layout principal
+        main_content_layout.addWidget(right_column_paned, stretch=3)  # 60% del ancho
+        
+        main_layout.addLayout(main_content_layout)
     
     # ===== MÉTODOS DE CONTROL =====
     
