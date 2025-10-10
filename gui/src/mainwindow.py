@@ -361,6 +361,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def closeEvent(self, event):
         if self.simulation_widget:
             self.simulation_widget.close()
+        if self.god_mode_widget:
+            self.god_mode_widget.close()
         try:
             if self.serial.is_open:
                 self.serial.close()
