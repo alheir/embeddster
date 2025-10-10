@@ -178,7 +178,7 @@ void do_can_random_send()
     auto sendAngle = [&](char angleId, int16_t val, uint32_t& lastSend, int16_t& lastVal) {
         if (abs(val - lastVal) >= 6 || (now - lastSend) >= 2000) {
             char buf[5];
-            int len = sprintf(buf, "%c%d", angleId, val);
+            int len = snprintf(buf, sizeof(buf), "%c%d", angleId, val);
             if (CAN.sendMsgBuf(NODE_ID, 0, len, (uint8_t*)buf) == CAN_OK) {
                 Serial.print("SENT ANGLE: ID=0x");
                 Serial.print(NODE_ID, HEX);
