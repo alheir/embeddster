@@ -234,6 +234,8 @@
     <addaction name="menuModel"/>
     <addaction name="actionToggle_theme"/>
     <addaction name="separator"/>
+    <addaction name="actionGod_mode"/>
+    <addaction name="separator"/>
     <addaction name="actionAbout"/>
    </widget>
    <addaction name="menuActions"/>
@@ -317,6 +319,21 @@
   <action name="actionToggle_theme">
    <property name="text">
     <string>Toggle theme</string>
+   </property>
+  </action>
+  <action name="actionGod_mode">
+   <property name="text">
+    <string>God mode</string>
+   </property>
+   <property name="font">
+    <font>
+     <family>Consolas</family>
+     <pointsize>12</pointsize>
+     <italic>false</italic>
+     <bold>false</bold>
+     <underline>false</underline>
+     <strikeout>false</strikeout>
+    </font>
    </property>
   </action>
  </widget>
