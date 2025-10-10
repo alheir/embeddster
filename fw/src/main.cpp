@@ -65,7 +65,7 @@ void setup()
         while (1)
             ;
     }
-    Serial.println("MCP/CAN init ok at 125kbps with 16MHz clock, aceptting any ID");
+    Serial.println("MCP/CAN init ok at 125kbps with 16MHz clock, accepting any ID");
     CAN.setMode(MCP_NORMAL);
     Serial.println("MCP/CAN set to normal mode");
 
