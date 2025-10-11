@@ -352,7 +352,7 @@ class GodModeWidget(QWidget):
         
         self.rx_table = QTableWidget()
         self.rx_table.setColumnCount(6)
-        self.rx_table.setHorizontalHeaderLabels(["Timestamp", "CAN ID", "DLC", "Type", "Data (Hex)", "Data (ASCII)"])
+        self.rx_table.setHorizontalHeaderLabels(["Timestamp", "CAN ID", "DLC", "Type", "Data (Hex)", "Data (ASCII/Bin)"])
         self.rx_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
         self.rx_table.horizontalHeader().setStretchLastSection(True)
         self.rx_table.setAlternatingRowColors(True)
@@ -464,7 +464,12 @@ class GodModeWidget(QWidget):
         hex_data = ' '.join(f'{b:02X}' for b in data)
         ascii_data = ''.join(chr(b) if 32 <= b < 127 else '.' for b in data)
         
-        msg_entry = f"[{timestamp}] ID=0x{can_id:03X} DLC={len(data)} Type={type_str} Data=[{hex_data}] ASCII=[{ascii_data}]"
+        # For LED messages, show binary instead of ASCII
+        if type_str == "LED" and len(data) == 1:
+            binary = f'{data[0]:08b}'
+            ascii_data = f"{binary[0]} {binary[1:4]} {binary[4]} {binary[5:8]}"
+            
+        msg_entry = f"[{timestamp}] ID=0x{can_id:03X} DLC={len(data)} Type={type_str} Data=[{hex_data}] ASCII/Bin=[{ascii_data}]"
         self.message_history.append(msg_entry)
         
         if len(self.message_history) > self.max_history:
