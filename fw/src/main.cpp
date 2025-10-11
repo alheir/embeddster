@@ -3,8 +3,6 @@
 
 #define BAUD_RATE 115200 // explicity defined in platformio.ini
 
-#define BUTTON_BUILTIN 0
-
 #include <Adafruit_NeoPixel.h>
 #define NUMPIXELS 1
 Adafruit_NeoPixel npxl(NUMPIXELS, PIN_NPXL, NEO_GRB + NEO_KHZ800);
@@ -30,10 +28,9 @@ void setup()
     delay(SETUP_DELAY_MS);
     Serial.println("\n~~~~\n");
 
-    pinMode(BUTTON_BUILTIN, INPUT_PULLUP);
     pinMode(LED_BUILTIN, OUTPUT);
     digitalWrite(LED_BUILTIN, LOW);
-    Serial.println("Onboard LED and button init ok");
+    Serial.println("Onboard LED init ok");
 
     delay(SETUP_DELAY_MS);
     Serial.println("\n~~~~\n");
@@ -45,9 +42,8 @@ void setup()
             ;
     }
     Serial.println("NEOPIXEL init ok");
-    npxl.setPixelColor(0, npxl.Color(15, 0, 0));
+    npxl.setPixelColor(0, npxl.Color(0, 0, 0));
     npxl.show();
-    Serial.println("NEOPIXEL set to red");
 
     delay(SETUP_DELAY_MS);
     Serial.println("\n~~~~\n");
@@ -72,15 +68,10 @@ void setup()
     delay(SETUP_DELAY_MS);
     Serial.println("\n~~~~\n");
 
-    npxl.setPixelColor(0, npxl.Color(0, 15, 0));
+    Serial.println("Setup complete, starting in CAN SNIFFER mode (Blue)");
+    npxl.setPixelColor(0, npxl.Color(0, 0, 15));
     npxl.show();
-    Serial.println("NEOPIXEL set to green");
-
-    delay(SETUP_DELAY_MS);
-    Serial.println("\n~~~~\n");
-
-    Serial.println("Setup complete, starting in CAN SNIFFER mode");
-    Serial.println("Press the button to switch mode to RANDOM SEND");
+    Serial.println("\n-->> Send 'M1' to switch to CAN SNIFFER mode, 'M2' to RANDOM SEND mode\n\n");
 }
 
 enum State
@@ -105,17 +96,20 @@ void loop()
         break;
     }
 
-    if (!digitalRead(BUTTON_BUILTIN))
-    {
-        Serial.print("\n\n~~~~Switching to  ");
-        Serial.print(nextState ? "RANDOM SEND" : "CAN SNIFFER");
-        Serial.println("~~~~\n");
-        currState = nextState;
-        nextState = (nextState + 1) % STATE_N;
-
-        while (!digitalRead(BUTTON_BUILTIN))
-            ;
-        delay(50);
+    if (Serial.available()) {
+        String cmd = Serial.readStringUntil('\n');
+        cmd.trim();
+        if (cmd == "M1" && currState != STATE_SNIFFER) {
+            Serial.println("\n\n~~~~Switching to CAN SNIFFER mode (Blue)~~~~\n");
+            currState = STATE_SNIFFER;
+            npxl.setPixelColor(0, npxl.Color(0, 0, 15));
+            npxl.show();
+        } else if (cmd == "M2" && currState != STATE_RANDOM_SEND) {
+            Serial.println("\n\n~~~~Switching to RANDOM SEND mode (Green)~~~~\n");
+            currState = STATE_RANDOM_SEND;
+            npxl.setPixelColor(0, npxl.Color(0, 15, 0));
+            npxl.show();
+        }
     }
 }
 
