@@ -46,6 +46,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # New: Lists to store angle histories (timestamps and values for roll, pitch, yaw per station)
         self.angle_histories = [[[], [], []] for _ in range(STATION_COUNT)]  # [station][angle][(timestamp, value)]
         self.plot_widgets = [None] * STATION_COUNT  # To hold plot widget instances
+        self.led_states = [{'r': False, 'g': False, 'b': False} for _ in range(STATION_COUNT)]  # LED states per station
         self.actionToggle_theme.triggered.connect(self.toggleTheme)
         self.current_theme = 'light'
 
@@ -196,27 +197,22 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 if not messages:
                     continue
                 for msg in messages:
-                    self.processParsedMessage(msg)
+                    can_id = msg['can_id']
+                    data = msg['data']
                     
                     # Forward to God Mode if open
                     if self.god_mode_widget and self.god_mode_widget.isVisible():
-                        try:
-                            station_index = int(msg.get('station_index'))
-                            can_id = 0x100 + station_index
-                            
-                            # Reconstruct data bytes from angle info
-                            angle_id = msg.get('angle')
-                            value = msg.get('value')
-                            
-                            angle_index = self._resolve_angle_index(angle_id)
-                            if angle_index in (0, 1, 2):
-                                angle_char = ['R', 'C', 'O'][angle_index]
-                                data_str = f"{angle_char}{value}"
-                                data = data_str.encode('ascii')
-                                
-                                self.god_mode_widget.on_can_message_received(can_id, data)
-                        except Exception as e:
-                            logging.warning(f"[MainWindow] Error forwarding to God Mode: {e}")
+                        self.god_mode_widget.on_can_message_received(msg)
+                    
+                    # Process angles in main GUI, ignore LEDs
+                    if msg['type'] == 'angle':
+                        self.processParsedMessage(msg)
+                        
+                    # Process LED state updates
+                    elif msg['type'] == 'led':
+                        station_index = msg['station_index']
+                        self.led_states[station_index] = {'r': msg['r'], 'g': msg['g'], 'b': msg['b']}
+                        self.stationInfoWidgets[station_index].update_led(msg['r'], msg['g'], msg['b'])
                             
         except (SerialException, OSError) as e:
             logging.error(f"[MainWindow] Error reading from serial port: {e}")
@@ -253,12 +249,25 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     self.simulation_widget.close()
                     self.simulation_widget = None
                 if self.serial.is_open:
+                    
+                    # Send M1 command to put firmware in sniffer mode
+                    try:
+                        self.serial.write(b"M1\n")
+                        logging.info("[MainWindow] Sent M1 command to firmware on serial disconnect")
+                    except Exception as e:
+                        logging.warning(f"[MainWindow] Failed to send M1 on serial disconnect: {e}")
+                        
                     self.serial.close()
                     logging.info("[MainWindow] Disconnected from serial port")
             except SerialException as e:
                 logging.warning(f"[MainWindow] Error closing serial port: {e}")
             self.serialConnected = False
             self.angle_histories = [[[], [], []] for _ in range(STATION_COUNT)]
+            
+            self.led_states = [{'r': False, 'g': False, 'b': False} for _ in range(STATION_COUNT)]
+            for i, siw in enumerate(self.stationInfoWidgets):
+                siw.update_led(False, False, False)
+                
         self.configPortSettings(self.serialConnected)
     
     def configPortSettings(self, connected=False):
@@ -359,10 +368,22 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.stationInfoWidgets[i].setLastUpdateTime(None)
 
     def closeEvent(self, event):
+        # If God Mode is open, send reset commands to firmware before closing
+        if self.god_mode_widget and self.god_mode_widget.isVisible() and self.serialConnected and self.serial.is_open:
+            try:
+                self.serial.write(b"MODE_NORMAL\n")
+                self.serial.write(b"M1\n")
+                logging.info("[MainWindow] Sent reset command to firmware on app close: NORMAL mode")
+            except Exception as e:
+                logging.warning(f"[MainWindow] Failed to send reset commands on app close: {e}")
+        
+        # Close widgets
         if self.simulation_widget:
             self.simulation_widget.close()
         if self.god_mode_widget:
             self.god_mode_widget.close()
+        
+        # Close serial
         try:
             if self.serial.is_open:
                 self.serial.close()
@@ -393,3 +414,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.god_mode_widget.show()
         self.god_mode_widget.raise_()
         self.god_mode_widget.activateWindow()
+        
+        # Send M1 command to put firmware in sniffer mode
+        try:
+            self.serial.write(b"M1\n")
+            logging.info("[MainWindow] Sent M1 command to firmware on God Mode open")
+        except Exception as e:
+            logging.warning(f"[MainWindow] Failed to send M1 on God Mode open: {e}")

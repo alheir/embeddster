@@ -54,6 +54,13 @@ void TP1BOARD::setDigit(uint8_t digit, char c)
 
 void TP1BOARD::setLED(uint8_t led, bool on)
 {
+    // LEDs:
+    // 0: Status 0 (mux control bit 0)
+    // 1: Status 1 (mux control bit 1)
+    // 2: White (D3)
+    // 3: Yellow (D4)
+    // 4: Blue (D5)
+    // 5: Green (D6)
     uint16_t bit = 0;
     if (led == 0)
         bit = STATUS_0_BIT;
@@ -150,4 +157,45 @@ uint8_t TP1BOARD::charToSegments(char c)
         return segmentPatterns[10 + (c - 'a')];
 
     return 0;
+}
+
+void TP1BOARD::setStatusLED(uint8_t index, bool on)
+{
+    if (index < 2) // Only 0 and 1
+    {
+        setLED(index, on);
+    }
+}
+
+void TP1BOARD::setMuxLED(uint8_t selection)
+{
+    // Mux control: STATUS_1 STATUS_0 -> LED
+    // 00 -> none
+    // 01 -> D1
+    // 10 -> D2
+    // 11 -> D3
+    uint16_t mask = STATUS_0_BIT | STATUS_1_BIT;
+    uint16_t bits = 0;
+    if (selection == 1) bits = STATUS_0_BIT;          // 01
+    else if (selection == 2) bits = STATUS_1_BIT;     // 10
+    else if (selection == 3) bits = STATUS_0_BIT | STATUS_1_BIT; // 11
+    // else 0 for none or invalid
+
+    ledStates = (ledStates & ~mask) | bits;
+}
+
+void TP1BOARD::setColorLED(uint8_t color, bool on)
+{
+    if (color < 4) // 0=White, 1=Yellow, 2=Blue, 3=Green
+    {
+        setLED(color + 2, on); // LEDs 2-5
+    }
+}
+
+void TP1BOARD::setColorLEDs(bool white, bool yellow, bool blue, bool green)
+{
+    setColorLED(0, white);
+    setColorLED(1, yellow);
+    setColorLED(2, blue);
+    setColorLED(3, green);
 }

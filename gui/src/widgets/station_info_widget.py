@@ -29,6 +29,34 @@ class StationInfoWidget(QtWidgets.QWidget):
         self.plotButton = QtWidgets.QPushButton("Plot")
         self.groupBox.layout().addWidget(self.plotButton, 4, 0, 1, 2)
         
+        self.led_layout = QtWidgets.QHBoxLayout()
+        
+        self.r_button = QtWidgets.QPushButton()
+        self.r_button.setFixedSize(11, 11)
+        self.r_button.setEnabled(False)
+        self.r_button.setStyleSheet("background-color: rgb(32, 32, 32); border-radius: 5px; border: 1px solid black;")
+        self.led_layout.addWidget(self.r_button)
+        
+        self.g_button = QtWidgets.QPushButton()
+        self.g_button.setFixedSize(11, 11)
+        self.g_button.setEnabled(False)
+        self.g_button.setStyleSheet("background-color: rgb(32, 32, 32); border-radius: 5px; border: 1px solid black;")
+        self.led_layout.addWidget(self.g_button)
+        
+        self.b_button = QtWidgets.QPushButton()
+        self.b_button.setFixedSize(11, 11)
+        self.b_button.setEnabled(False)
+        self.b_button.setStyleSheet("background-color: rgb(32, 32, 32); border-radius: 5px; border: 1px solid black;")
+        self.led_layout.addWidget(self.b_button)
+        
+        self.mix_button = QtWidgets.QPushButton()
+        self.mix_button.setFixedSize(15, 15)
+        self.mix_button.setEnabled(False)
+        self.mix_button.setStyleSheet("background-color: rgb(0, 0, 0); border-radius: 7px; border: 1px solid black;")
+        self.led_layout.addWidget(self.mix_button)
+        
+        self.groupBox.layout().addLayout(self.led_layout, 5, 0, 1, 2)
+        
         grid.addWidget(self.groupBox,0,0)
         self.setLayout(grid)
 
@@ -56,4 +84,15 @@ class StationInfoWidget(QtWidgets.QWidget):
         else:
             minutes = int(seconds_ago // 60)
             self.labelLastUpdate.setText(f"Last Update: {minutes} m")
+
+    def update_led(self, r, g, b):
+        r_color = "rgb(255, 0, 0)" if r else "rgb(32, 32, 32)"
+        g_color = "rgb(0, 255, 0)" if g else "rgb(32, 32, 32)"
+        b_color = "rgb(0, 0, 255)" if b else "rgb(32, 32, 32)"
+        mix_color = f"rgb({255 if r else 0}, {255 if g else 0}, {255 if b else 0})"
+        
+        self.r_button.setStyleSheet(f"background-color: {r_color}; border-radius: 5px; border: 1px solid black;")
+        self.g_button.setStyleSheet(f"background-color: {g_color}; border-radius: 5px; border: 1px solid black;")
+        self.b_button.setStyleSheet(f"background-color: {b_color}; border-radius: 5px; border: 1px solid black;")
+        self.mix_button.setStyleSheet(f"background-color: {mix_color}; border-radius: 7px; border: 1px solid black;")
 

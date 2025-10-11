@@ -196,11 +196,6 @@ class GodModeWidget(QWidget):
         angle_layout = QVBoxLayout()
         
         angle_form = QHBoxLayout()
-        angle_form.addWidget(QLabel("Group:"))
-        self.angle_group_spin = QSpinBox()
-        self.angle_group_spin.setRange(0, STATION_COUNT - 1)
-        angle_form.addWidget(self.angle_group_spin)
-        
         angle_form.addWidget(QLabel("Type:"))
         self.angle_type_combo = QComboBox()
         self.angle_type_combo.addItems(["R (Roll)", "C (Pitch)", "O (Yaw)"])
@@ -214,6 +209,28 @@ class GodModeWidget(QWidget):
         
         angle_form.addStretch()
         angle_layout.addLayout(angle_form)
+        
+        group_sel_layout = QHBoxLayout()
+        group_sel_layout.addWidget(QLabel("Groups:"))
+        self.angle_group_checks = []
+        for i in range(STATION_COUNT):
+            cb = QCheckBox(f"{i}")
+            cb.setChecked(i == 0)  # Default first group selected
+            self.angle_group_checks.append(cb)
+            group_sel_layout.addWidget(cb)
+        
+        select_all_btn = QPushButton("All")
+        select_all_btn.setMaximumWidth(40)
+        select_all_btn.clicked.connect(lambda: [cb.setChecked(True) for cb in self.angle_group_checks])
+        group_sel_layout.addWidget(select_all_btn)
+        
+        select_none_btn = QPushButton("None")
+        select_none_btn.setMaximumWidth(40)
+        select_none_btn.clicked.connect(lambda: [cb.setChecked(False) for cb in self.angle_group_checks])
+        group_sel_layout.addWidget(select_none_btn)
+        
+        group_sel_layout.addStretch()
+        angle_layout.addLayout(group_sel_layout)
         
         continuous_layout = QHBoxLayout()
         self.continuous_check = QCheckBox("Continuous send")
@@ -335,7 +352,7 @@ class GodModeWidget(QWidget):
         
         self.rx_table = QTableWidget()
         self.rx_table.setColumnCount(6)
-        self.rx_table.setHorizontalHeaderLabels(["#", "Timestamp", "CAN ID", "DLC", "Data (Hex)", "Data (ASCII)"])
+        self.rx_table.setHorizontalHeaderLabels(["Timestamp", "CAN ID", "DLC", "Type", "Data (Hex)", "Data (ASCII/Bin)"])
         self.rx_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
         self.rx_table.horizontalHeader().setStretchLastSection(True)
         self.rx_table.setAlternatingRowColors(True)
@@ -432,7 +449,11 @@ class GodModeWidget(QWidget):
     def update_counter_label(self):
         self.msg_counter_label.setText(f"📊 Messages: {self.rx_count} RX / {self.tx_count} TX")
     
-    def on_can_message_received(self, can_id, data):
+    def on_can_message_received(self, msg):
+        can_id = msg['can_id']
+        data = msg['data']
+        type_str = {'angle': 'Angle', 'led': 'LED', 'unknown': 'Unknown'}.get(msg['type'], 'Unknown')
+        
         if self.paused:
             return
             
@@ -443,7 +464,12 @@ class GodModeWidget(QWidget):
         hex_data = ' '.join(f'{b:02X}' for b in data)
         ascii_data = ''.join(chr(b) if 32 <= b < 127 else '.' for b in data)
         
-        msg_entry = f"[{timestamp}] ID=0x{can_id:03X} DLC={len(data)} Data=[{hex_data}] ASCII=[{ascii_data}]"
+        # For LED messages, show binary instead of ASCII
+        if type_str == "LED" and len(data) == 1:
+            binary = f'{data[0]:08b}'
+            ascii_data = f"{binary[0]} {binary[1:4]} {binary[4]} {binary[5:8]}"
+            
+        msg_entry = f"[{timestamp}] ID=0x{can_id:03X} DLC={len(data)} Type={type_str} Data=[{hex_data}] ASCII/Bin=[{ascii_data}]"
         self.message_history.append(msg_entry)
         
         if len(self.message_history) > self.max_history:
@@ -458,10 +484,10 @@ class GodModeWidget(QWidget):
         self.rx_table.insertRow(row)
         
         self.message_counter += 1
-        self.rx_table.setItem(row, 0, QTableWidgetItem(str(self.message_counter)))
-        self.rx_table.setItem(row, 1, QTableWidgetItem(timestamp))
-        self.rx_table.setItem(row, 2, QTableWidgetItem(f"0x{can_id:03X}"))
-        self.rx_table.setItem(row, 3, QTableWidgetItem(str(len(data))))
+        self.rx_table.setItem(row, 0, QTableWidgetItem(timestamp))
+        self.rx_table.setItem(row, 1, QTableWidgetItem(f"0x{can_id:03X}"))
+        self.rx_table.setItem(row, 2, QTableWidgetItem(str(len(data))))
+        self.rx_table.setItem(row, 3, QTableWidgetItem(type_str))
         self.rx_table.setItem(row, 4, QTableWidgetItem(hex_data))
         self.rx_table.setItem(row, 5, QTableWidgetItem(ascii_data))
         
@@ -550,15 +576,23 @@ class GodModeWidget(QWidget):
     
     def _send_single_angle(self):
         try:
-            group = self.angle_group_spin.value()
             angle_type = self.angle_type_combo.currentText()[0]
             value = self.angle_value_spin.value()
             
-            can_id = 0x100 + group
-            data = f"{angle_type}{value:+d}".encode('ascii')
+            selected_groups = [i for i, cb in enumerate(self.angle_group_checks) if cb.isChecked()]
             
-            self._send_can_message(can_id, data)
-            self.log_text.append(f"✅ Angle: G{group} {angle_type}={value}°")
+            if not selected_groups:
+                self.log_text.append("❌ No groups selected for angle message")
+                return
+            
+            for group in selected_groups:
+                can_id = 0x100 + group
+                data = f"{angle_type}{value:+d}".encode('ascii')
+                
+                self._send_can_message(can_id, data)
+            
+            groups_str = ','.join(str(g) for g in selected_groups)
+            self.log_text.append(f"✅ Angle: Groups {groups_str} {angle_type}={value}°")
         except Exception as e:
             self.log_text.append(f"❌ Angle send error: {e}")
     
@@ -689,6 +723,16 @@ class GodModeWidget(QWidget):
         logging.debug(f"[GodMode] Sent: {cmd.strip()}")
         
     def closeEvent(self, event):
+        # Send reset command to firmware: NORMAL mode
+        if self.main_window.serialConnected and self.main_window.serial.is_open:
+            try:
+                self.main_window.serial.write(b"MODE_NORMAL\n")
+                self.main_window.serial.write(b"M1\n")
+                logging.info("[GodMode] Sent reset command to firmware: NORMAL mode")
+            except Exception as e:
+                logging.warning(f"[GodMode] Failed to send reset commands on close: {e}")
+        
+        # Stop timers and accept the event
         self.stop_continuous_sending()
         self.stop_random_traffic()
         self.update_timer.stop()
