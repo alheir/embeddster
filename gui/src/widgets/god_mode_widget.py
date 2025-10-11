@@ -7,6 +7,7 @@ import logging
 import time
 import math
 import random
+from src.package.Station import STATION_COUNT
 
 class GodModeWidget(QWidget):
     """
@@ -40,7 +41,7 @@ class GodModeWidget(QWidget):
         
         # Registro de última recepción por estación/ángulo
         self.station_last_data = {}
-        for station in range(8):
+        for station in range(STATION_COUNT):
             self.station_last_data[station] = {
                 'R': {'value': None, 'time': None},
                 'C': {'value': None, 'time': None},
@@ -146,11 +147,11 @@ class GodModeWidget(QWidget):
         self.station_table.setAlternatingRowColors(True)
         self.station_table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
         
-        # Inicializar con 8 estaciones
-        for i in range(8):
+        # Inicializar con STATION_COUNT estaciones
+        for i in range(STATION_COUNT):
             row = self.station_table.rowCount()
             self.station_table.insertRow(row)
-            self.station_table.setItem(row, 0, QTableWidgetItem(f"G{i}"))
+            self.station_table.setItem(row, 0, QTableWidgetItem(f"0x10{i}"))
             for col in range(1, 7):
                 self.station_table.setItem(row, col, QTableWidgetItem("--"))
         
@@ -221,7 +222,7 @@ class GodModeWidget(QWidget):
         angle_form = QHBoxLayout()
         angle_form.addWidget(QLabel("Group:"))
         self.angle_group_spin = QSpinBox()
-        self.angle_group_spin.setRange(0, 7)
+        self.angle_group_spin.setRange(0, STATION_COUNT - 1)
         angle_form.addWidget(self.angle_group_spin)
         
         angle_form.addWidget(QLabel("Type:"))
@@ -265,7 +266,7 @@ class GodModeWidget(QWidget):
         led_form = QHBoxLayout()
         led_form.addWidget(QLabel("Target Group:"))
         self.led_group_spin = QSpinBox()
-        self.led_group_spin.setRange(0, 7)
+        self.led_group_spin.setRange(0, STATION_COUNT - 1)
         led_form.addWidget(self.led_group_spin)
         
         led_form.addWidget(QLabel("LEDs:"))
@@ -294,7 +295,7 @@ class GodModeWidget(QWidget):
         random_form = QHBoxLayout()
         random_form.addWidget(QLabel("Groups:"))
         self.random_group_checks = []
-        for i in range(8):
+        for i in range(STATION_COUNT):
             cb = QCheckBox(f"{i}")
             cb.setChecked(i == 0)
             self.random_group_checks.append(cb)
@@ -318,7 +319,7 @@ class GodModeWidget(QWidget):
         mode_grid = QHBoxLayout()
         
         self.random_group_modes = []
-        for i in range(8):
+        for i in range(STATION_COUNT):
             mode_combo = QComboBox()
             mode_combo.addItems(["Sine", "Const", "Noise"])
             mode_combo.setMaximumWidth(70)
@@ -519,8 +520,8 @@ class GodModeWidget(QWidget):
     
     def update_station_data(self, can_id, data, ascii_data):
         """Actualiza la tabla de estado de estaciones con datos TP2"""
-        # Verificar si es un ID de grupo (0x100-0x107)
-        if 0x100 <= can_id <= 0x107:
+        # Verificar si es un ID de grupo (0x100-0x10{STATION_COUNT-1})
+        if 0x100 <= can_id <= 0x100 + STATION_COUNT - 1:
             station = can_id - 0x100
             
             # Intentar parsear como mensaje de ángulo TP2
@@ -543,7 +544,7 @@ class GodModeWidget(QWidget):
     
     def refresh_station_table(self):
         """Actualiza la tabla de estado de estaciones"""
-        for station in range(8):
+        for station in range(STATION_COUNT):
             data = self.station_last_data[station]
             
             for idx, angle in enumerate(['R', 'C', 'O']):
