@@ -50,6 +50,15 @@ void setup()
     Serial.println("\n~~~~\n");
 
     board.begin();
+    for(int i=0; i<3; i++)
+    {
+        board.setColorLEDs(true, true, true, true);
+        board.refresh();
+        delay(50);
+        board.setColorLEDs(false, false, false, false);
+        board.refresh();
+        delay(50);
+    }
     Serial.println("TP1BOARD init ok");
 
     delay(SETUP_DELAY_MS);
