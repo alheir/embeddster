@@ -11,8 +11,8 @@ from src.package.Station import STATION_COUNT
 
 class GodModeWidget(QWidget):
     """
-    Widget avanzado para monitoreo y envío de mensajes CAN.
-    Actúa como sniffer CAN y generador de tráfico personalizado.
+    Advanced widget for CAN monitoring and message injection.
+    Acts as CAN sniffer and custom traffic generator.
     """
     
     def __init__(self, main_window, parent=None):
@@ -21,7 +21,6 @@ class GodModeWidget(QWidget):
         self.setWindowTitle("🔧 God Mode - CAN Monitor & Injector")
         self.setGeometry(100, 100, 1200, 850)
         
-        # Buffers para almacenar mensajes
         self.message_history = []
         self.max_history = 1000
         self.paused = False
@@ -30,16 +29,13 @@ class GodModeWidget(QWidget):
         self.message_counter = 0
         self.auto_scroll_enabled = True
         
-        # Estado de envío continuo
         self.continuous_sending = False
         self.continuous_timer = None
         
-        # Estado de random traffic
         self.random_active = False
         self.random_timer = None
         self.random_states = {}
         
-        # Registro de última recepción por estación/ángulo
         self.station_last_data = {}
         for station in range(STATION_COUNT):
             self.station_last_data[station] = {
@@ -50,18 +46,15 @@ class GodModeWidget(QWidget):
         
         self.setup_ui()
         
-        # Timer para actualizar tiempos transcurridos
         self.update_timer = QtCore.QTimer()
         self.update_timer.timeout.connect(self.update_station_times)
-        self.update_timer.start(1000)  # Cada segundo
+        self.update_timer.start(1000)
         
     def setup_ui(self):
         main_layout = QVBoxLayout(self)
         
-        # ===== FILA COMBINADA: CAN CONTROLLER MODE + CONTROL & FILTERS =====
         top_controls_layout = QHBoxLayout()
         
-        # === CAN CONTROLLER MODE (Izquierda) ===
         can_mode_group = QGroupBox("🔌 CAN Controller Mode")
         can_mode_layout = QHBoxLayout()
         
@@ -76,35 +69,29 @@ class GodModeWidget(QWidget):
         can_mode_group.setLayout(can_mode_layout)
         top_controls_layout.addWidget(can_mode_group)
         
-        # === CONTROL Y FILTROS (Derecha) ===
         control_group = QGroupBox("⚙️ Control & Filters")
         control_layout = QHBoxLayout()
         
-        # Pause/Resume
         self.pause_btn = QPushButton("⏸ Pause")
         self.pause_btn.setCheckable(True)
         self.pause_btn.toggled.connect(self.toggle_pause)
         control_layout.addWidget(self.pause_btn)
         
-        # Auto-scroll
         self.autoscroll_check = QCheckBox("Auto-scroll")
         self.autoscroll_check.setChecked(True)
         self.autoscroll_check.toggled.connect(self.toggle_autoscroll)
         control_layout.addWidget(self.autoscroll_check)
         
-        # Clear
         clear_btn = QPushButton("🗑 Clear")
         clear_btn.clicked.connect(self.clear_messages)
         control_layout.addWidget(clear_btn)
         
-        # Export
         export_btn = QPushButton("💾 Export")
         export_btn.clicked.connect(self.export_log)
         control_layout.addWidget(export_btn)
         
         control_layout.addWidget(QLabel("│"))
         
-        # Filter by CAN ID
         self.filter_check = QCheckBox("Filter IDs:")
         self.filter_check.toggled.connect(self.toggle_filter)
         control_layout.addWidget(self.filter_check)
@@ -118,7 +105,6 @@ class GodModeWidget(QWidget):
         
         control_layout.addWidget(QLabel("│"))
         
-        # Contador de mensajes
         self.msg_counter_label = QLabel("📊 Messages: 0 RX / 0 TX")
         control_layout.addWidget(self.msg_counter_label)
         self.rx_count = 0
@@ -130,13 +116,10 @@ class GodModeWidget(QWidget):
         
         main_layout.addLayout(top_controls_layout)
         
-        # ===== NUEVA DISTRIBUCIÓN: DOS COLUMNAS PRINCIPALES =====
         main_content_layout = QHBoxLayout()
         
-        # ===== COLUMNA IZQUIERDA (40%) =====
         left_column = QVBoxLayout()
         
-        # === SECCIÓN 1.5: ESTADO DE ESTACIONES ===
         station_group = QGroupBox("📡 Station Status (Last Received)")
         station_layout = QVBoxLayout()
         
@@ -147,7 +130,6 @@ class GodModeWidget(QWidget):
         self.station_table.setAlternatingRowColors(True)
         self.station_table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
         
-        # Inicializar con STATION_COUNT estaciones
         for i in range(STATION_COUNT):
             row = self.station_table.rowCount()
             self.station_table.insertRow(row)
@@ -159,25 +141,21 @@ class GodModeWidget(QWidget):
         station_group.setLayout(station_layout)
         left_column.addWidget(station_group, stretch=1)
         
-        # === SECCIÓN 3: ENVÍO DE MENSAJES (mismo ancho que Station Status) ===
         tx_group = QGroupBox("📤 Send CAN Message")
         tx_layout = QVBoxLayout()
         
-        # Selector de modo
         mode_layout = QHBoxLayout()
         mode_layout.addWidget(QLabel("Mode:"))
         
         self.mode_combo = QComboBox()
-        self.mode_combo.addItems(["Manual Entry", "TP2 Angle Message", "TP2 LED Command", "Random Traffic"])
+        self.mode_combo.addItems(["Manual Entry", "Angle Message", "LED Command", "Random Traffic"])
         self.mode_combo.currentIndexChanged.connect(self.on_mode_changed)
         mode_layout.addWidget(self.mode_combo)
         mode_layout.addStretch()
         tx_layout.addLayout(mode_layout)
         
-        # Stack de formularios según el modo
         self.tx_stack = QtWidgets.QStackedWidget()
         
-        # ---- MODO 1: Manual Entry (mejorado con ASCII) ----
         manual_widget = QWidget()
         manual_layout = QVBoxLayout()
         
@@ -189,7 +167,6 @@ class GodModeWidget(QWidget):
         id_layout.addStretch()
         manual_layout.addLayout(id_layout)
         
-        # Radio buttons para elegir formato
         format_layout = QHBoxLayout()
         format_layout.addWidget(QLabel("Input format:"))
         self.manual_format_hex = QRadioButton("Hex")
@@ -215,7 +192,6 @@ class GodModeWidget(QWidget):
         manual_widget.setLayout(manual_layout)
         self.tx_stack.addWidget(manual_widget)
         
-        # ---- MODO 2: TP2 Angle Message (con envío continuo) ----
         angle_widget = QWidget()
         angle_layout = QVBoxLayout()
         
@@ -239,7 +215,6 @@ class GodModeWidget(QWidget):
         angle_form.addStretch()
         angle_layout.addLayout(angle_form)
         
-        # Controles de envío continuo
         continuous_layout = QHBoxLayout()
         self.continuous_check = QCheckBox("Continuous send")
         continuous_layout.addWidget(self.continuous_check)
@@ -259,7 +234,6 @@ class GodModeWidget(QWidget):
         angle_widget.setLayout(angle_layout)
         self.tx_stack.addWidget(angle_widget)
         
-        # ---- MODO 3: TP2 LED Command ----
         led_widget = QWidget()
         led_layout = QVBoxLayout()
         
@@ -287,11 +261,9 @@ class GodModeWidget(QWidget):
         led_widget.setLayout(led_layout)
         self.tx_stack.addWidget(led_widget)
         
-        # ---- MODO 4: Random Traffic (refactorizado, compacto) ----
         random_widget = QWidget()
         random_layout = QVBoxLayout()
         
-        # Selección de grupos (más compacta)
         random_form = QHBoxLayout()
         random_form.addWidget(QLabel("Groups:"))
         self.random_group_checks = []
@@ -314,7 +286,6 @@ class GodModeWidget(QWidget):
         random_form.addStretch()
         random_layout.addLayout(random_form)
         
-        # Modo de señal por grupo (más compacto - 2 filas de 4)
         mode_sel_frame = QGroupBox("Signal Mode per Group")
         mode_grid = QHBoxLayout()
         
@@ -333,7 +304,6 @@ class GodModeWidget(QWidget):
         mode_sel_frame.setLayout(mode_grid)
         random_layout.addWidget(mode_sel_frame)
         
-        # Controles de random traffic
         random_control = QHBoxLayout()
         random_control.addWidget(QLabel("Period (ms):"))
         self.random_period_spin = QSpinBox()
@@ -356,13 +326,10 @@ class GodModeWidget(QWidget):
         tx_group.setLayout(tx_layout)
         left_column.addWidget(tx_group, stretch=1)
         
-        # Agregar la columna izquierda al layout principal
-        main_content_layout.addLayout(left_column, stretch=2)  # 40% del ancho
+        main_content_layout.addLayout(left_column, stretch=2)
         
-        # ===== COLUMNA DERECHA (60%) =====
         right_column_paned = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
         
-        # === PANEL SUPERIOR: TABLA DE MENSAJES RECIBIDOS (60% de la altura derecha) ===
         rx_group = QGroupBox("📥 Received CAN Messages")
         rx_layout = QVBoxLayout()
         
@@ -379,7 +346,6 @@ class GodModeWidget(QWidget):
         rx_group.setLayout(rx_layout)
         right_column_paned.addWidget(rx_group)
         
-        # === PANEL INFERIOR: LOG DETALLADO (40% de la altura derecha) ===
         log_group = QGroupBox("📋 Detailed Log")
         log_layout = QVBoxLayout()
         
@@ -391,19 +357,14 @@ class GodModeWidget(QWidget):
         log_group.setLayout(log_layout)
         right_column_paned.addWidget(log_group)
         
-        # Establecer proporciones iniciales del splitter (60% superior, 40% inferior)
-        right_column_paned.setStretchFactor(0, 3)  # Received messages
-        right_column_paned.setStretchFactor(1, 2)  # Detailed log
+        right_column_paned.setStretchFactor(0, 3) # RX table gets 3/5 of space
+        right_column_paned.setStretchFactor(1, 2) # Log gets 2/5 of space
         
-        # Agregar la columna derecha al layout principal
-        main_content_layout.addWidget(right_column_paned, stretch=3)  # 60% del ancho
+        main_content_layout.addWidget(right_column_paned, stretch=3)
         
         main_layout.addLayout(main_content_layout)
     
-    # ===== MÉTODOS DE CONTROL =====
-    
     def set_can_mode(self, mode):
-        """Cambia el modo del controlador CAN"""
         if not self.main_window.serialConnected:
             self.log_text.append("❌ Not connected to serial port")
             return
@@ -471,12 +432,7 @@ class GodModeWidget(QWidget):
     def update_counter_label(self):
         self.msg_counter_label.setText(f"📊 Messages: {self.rx_count} RX / {self.tx_count} TX")
     
-    # ===== RECEPCIÓN DE MENSAJES =====
-    
     def on_can_message_received(self, can_id, data):
-        """
-        Llamado por MainWindow cuando llega un mensaje CAN.
-        """
         if self.paused:
             return
             
@@ -495,11 +451,9 @@ class GodModeWidget(QWidget):
             if self.rx_table.rowCount() > 0:
                 self.rx_table.removeRow(0)
         
-        # Actualizar contador
         self.rx_count += 1
         self.update_counter_label()
         
-        # Agregar a tabla
         row = self.rx_table.rowCount()
         self.rx_table.insertRow(row)
         
@@ -511,39 +465,31 @@ class GodModeWidget(QWidget):
         self.rx_table.setItem(row, 4, QTableWidgetItem(hex_data))
         self.rx_table.setItem(row, 5, QTableWidgetItem(ascii_data))
         
-        # Auto-scroll
         if self.auto_scroll_enabled:
             self.rx_table.scrollToBottom()
         
-        # Actualizar estado de estaciones si es mensaje TP2
         self.update_station_data(can_id, data, ascii_data)
     
     def update_station_data(self, can_id, data, ascii_data):
-        """Actualiza la tabla de estado de estaciones con datos TP2"""
-        # Verificar si es un ID de grupo (0x100-0x10{STATION_COUNT-1})
         if 0x100 <= can_id <= 0x100 + STATION_COUNT - 1:
             station = can_id - 0x100
             
-            # Intentar parsear como mensaje de ángulo TP2
             if len(data) >= 2 and ascii_data[0] in ['R', 'C', 'O']:
                 angle_type = ascii_data[0]
                 try:
                     angle_value = int(ascii_data[1:])
                     
-                    # Guardar en registro
                     self.station_last_data[station][angle_type] = {
                         'value': angle_value,
                         'time': time.time()
                     }
                     
-                    # Actualizar tabla
                     self.refresh_station_table()
                     
                 except ValueError:
                     pass
     
     def refresh_station_table(self):
-        """Actualiza la tabla de estado de estaciones"""
         for station in range(STATION_COUNT):
             data = self.station_last_data[station]
             
@@ -564,11 +510,9 @@ class GodModeWidget(QWidget):
                     self.station_table.setItem(station, time_col, QTableWidgetItem("--"))
     
     def update_station_times(self):
-        """Timer callback para actualizar tiempos transcurridos"""
         self.refresh_station_table()
     
     def format_elapsed_time(self, seconds):
-        """Formatea tiempo transcurrido en formato legible"""
         if seconds < 1:
             return "now"
         elif seconds < 60:
@@ -578,8 +522,6 @@ class GodModeWidget(QWidget):
         else:
             return f"{int(seconds/3600)}h"
     
-    # ===== ENVÍO DE MENSAJES =====
-    
     def send_manual_message(self):
         try:
             can_id_text = self.manual_id_line.text().strip()
@@ -588,10 +530,8 @@ class GodModeWidget(QWidget):
             data_text = self.manual_data_line.text().strip()
             
             if self.manual_format_hex.isChecked():
-                # Entrada en hexadecimal
                 data = bytes.fromhex(data_text.replace(' ', ''))
             else:
-                # Entrada en ASCII
                 data = data_text.encode('ascii')
             
             self._send_can_message(can_id, data)
@@ -600,21 +540,18 @@ class GodModeWidget(QWidget):
             self.log_text.append(f"❌ Manual send error: {e}")
     
     def send_angle_message(self):
-        """Envía mensaje de ángulo TP2, con opción de envío continuo"""
         if self.continuous_check.isChecked():
-            # Toggle continuous sending
             if self.continuous_sending:
                 self.stop_continuous_sending()
             else:
                 self.start_continuous_sending()
         else:
-            # Send single message
             self._send_single_angle()
     
     def _send_single_angle(self):
         try:
             group = self.angle_group_spin.value()
-            angle_type = self.angle_type_combo.currentText()[0]  # 'R', 'C', or 'O'
+            angle_type = self.angle_type_combo.currentText()[0]
             value = self.angle_value_spin.value()
             
             can_id = 0x100 + group
@@ -626,7 +563,6 @@ class GodModeWidget(QWidget):
             self.log_text.append(f"❌ Angle send error: {e}")
     
     def start_continuous_sending(self):
-        """Inicia envío continuo de mensajes de ángulo"""
         self.continuous_sending = True
         period = self.continuous_period_spin.value()
         
@@ -637,7 +573,6 @@ class GodModeWidget(QWidget):
         self.log_text.append(f"▶ Started continuous angle sending (period={period}ms)")
     
     def stop_continuous_sending(self):
-        """Detiene envío continuo"""
         self.continuous_sending = False
         if self.continuous_timer:
             self.continuous_timer.stop()
@@ -671,11 +606,9 @@ class GodModeWidget(QWidget):
             self.stop_random_traffic()
     
     def start_random_traffic(self):
-        """Inicia generación de tráfico aleatorio"""
         self.random_active = True
         period = self.random_period_spin.value()
         
-        # Inicializar estados por grupo
         for i, cb in enumerate(self.random_group_checks):
             if cb.isChecked():
                 mode = self.random_group_modes[i].currentText()
@@ -702,7 +635,6 @@ class GodModeWidget(QWidget):
         self.log_text.append(f"▶ Started random traffic (period={period}ms)")
     
     def stop_random_traffic(self):
-        """Detiene generación de tráfico aleatorio"""
         self.random_active = False
         if self.random_timer:
             self.random_timer.stop()
@@ -713,14 +645,12 @@ class GodModeWidget(QWidget):
         self.log_text.append("⏹ Stopped random traffic")
     
     def send_random_traffic(self):
-        """Genera y envía un mensaje aleatorio por grupo activo"""
         angle_types = ['R', 'C', 'O']
         
         for group_id, state in self.random_states.items():
             angle_type = random.choice(angle_types)
             mode = state['mode']
             
-            # Generar valor según modo
             if mode == "Sine":
                 elapsed = time.time() - state['start_time']
                 params = state['sine_params'][angle_type]
@@ -728,7 +658,7 @@ class GodModeWidget(QWidget):
                 value = int(value + params['offset'] + random.uniform(-2, 2))
             elif mode == "Const":
                 value = state['const_value']
-            else:  # Noise
+            else:
                 value = random.randint(-179, 180)
             
             value = max(-179, min(180, value))
@@ -738,18 +668,15 @@ class GodModeWidget(QWidget):
             
             try:
                 self._send_can_message(can_id, data)
-                # Log cada mensaje enviado en random traffic
                 self.log_text.append(f"🎲 Random: G{group_id} {angle_type}={value:+d}° [{mode}]")
             except Exception as e:
                 logging.warning(f"Random traffic error: {e}")
                 self.log_text.append(f"❌ Random error G{group_id}: {e}")
     
     def _send_can_message(self, can_id, data):
-        """Envía mensaje CAN a través de la conexión serial"""
         if not self.main_window.serialConnected:
             raise Exception("Not connected to serial port")
         
-        # Construir comando según formato PC-K64F: SEND_ID_BYTE1_BYTE2_...
         cmd = f"SEND_{can_id:x}"
         for byte in data:
             cmd += f"_{byte:02x}"
@@ -762,7 +689,6 @@ class GodModeWidget(QWidget):
         logging.debug(f"[GodMode] Sent: {cmd.strip()}")
         
     def closeEvent(self, event):
-        """Cleanup al cerrar"""
         self.stop_continuous_sending()
         self.stop_random_traffic()
         self.update_timer.stop()
