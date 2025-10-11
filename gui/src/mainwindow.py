@@ -384,6 +384,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.setTheme(self.current_theme)
 
     def open_god_mode(self):
+        if not self.serialConnected or self.port == SIMULATION_NAME:
+            QMessageBox.warning(self, "Connection Required", "Please connect to a real serial port (not the emulator) to open God Mode.")
+            return
         if self.god_mode_widget is None:
             from src.widgets.god_mode_widget import GodModeWidget
             self.god_mode_widget = GodModeWidget(self)
