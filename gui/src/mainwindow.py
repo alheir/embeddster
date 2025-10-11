@@ -196,24 +196,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 if not messages:
                     continue
                 for msg in messages:
+                    can_id = msg['can_id']
+                    data = msg['data']
                     
                     # Forward to God Mode if open
-                    try:
-                        station_index = int(msg.get('station_index'))
-                        can_id = 0x100 + station_index
-                        angle_id = msg.get('angle')
-                        value = msg.get('value')
-                        angle_index = self._resolve_angle_index(angle_id)
-                        if angle_index in (0, 1, 2):
-                            angle_char = ['R', 'C', 'O'][angle_index]
-                            data_str = f"{angle_char}{value}"
-                            data = data_str.encode('ascii')
-                            self.god_mode_widget.on_can_message_received(can_id, data)
-                    except Exception as e:
-                        logging.warning(f"[MainWindow] Error forwarding to God Mode: {e}")
+                    if self.god_mode_widget and self.god_mode_widget.isVisible():
+                        self.god_mode_widget.on_can_message_received(can_id, data)
                     
-                    # Process normally
-                    self.processParsedMessage(msg)
+                    # Process angles in main GUI, ignore LEDs
+                    if msg['type'] == 'angle':
+                        self.processParsedMessage(msg)
                             
         except (SerialException, OSError) as e:
             logging.error(f"[MainWindow] Error reading from serial port: {e}")
