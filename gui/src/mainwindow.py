@@ -46,6 +46,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # New: Lists to store angle histories (timestamps and values for roll, pitch, yaw per station)
         self.angle_histories = [[[], [], []] for _ in range(STATION_COUNT)]  # [station][angle][(timestamp, value)]
         self.plot_widgets = [None] * STATION_COUNT  # To hold plot widget instances
+        self.led_states = [{'r': False, 'g': False, 'b': False} for _ in range(STATION_COUNT)]  # LED states per station
         self.actionToggle_theme.triggered.connect(self.toggleTheme)
         self.current_theme = 'light'
 
@@ -206,6 +207,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     # Process angles in main GUI, ignore LEDs
                     if msg['type'] == 'angle':
                         self.processParsedMessage(msg)
+                        
+                    # Process LED state updates
+                    elif msg['type'] == 'led':
+                        station_index = msg['station_index']
+                        self.led_states[station_index] = {'r': msg['r'], 'g': msg['g'], 'b': msg['b']}
+                        self.stationInfoWidgets[station_index].update_led(msg['r'], msg['g'], msg['b'])
                             
         except (SerialException, OSError) as e:
             logging.error(f"[MainWindow] Error reading from serial port: {e}")
@@ -256,6 +263,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 logging.warning(f"[MainWindow] Error closing serial port: {e}")
             self.serialConnected = False
             self.angle_histories = [[[], [], []] for _ in range(STATION_COUNT)]
+            
+            self.led_states = [{'r': False, 'g': False, 'b': False} for _ in range(STATION_COUNT)]
+            for i, siw in enumerate(self.stationInfoWidgets):
+                siw.update_led(False, False, False)
+                
         self.configPortSettings(self.serialConnected)
     
     def configPortSettings(self, connected=False):
