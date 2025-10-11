@@ -2,6 +2,7 @@ from PyQt6.QtOpenGLWidgets import QOpenGLWidget
 from OpenGL.GL import *
 import numpy as np
 import pyrr
+import os
 
 from src.package.Mesh import Mesh
 from src.package.Entity import Entity
@@ -18,6 +19,7 @@ class FrdmViewerWidget(QOpenGLWidget):
 
     def __init__(self, parent=None):
         super().__init__()
+        self.base_dir = os.path.dirname(__file__)
         self.stations = []
         self.stations_mesh = []
         self.stations_active = [False]*STATION_COUNT
@@ -34,23 +36,23 @@ class FrdmViewerWidget(QOpenGLWidget):
                 eulers = [0,0,90]
             ))
             self.stations_mesh.append([
-                Mesh("src/models/frdm.obj"),
-                Mesh("src/models/plane.obj")
+                Mesh(os.path.join(self.base_dir, "..", "models", "frdm.obj")),
+                Mesh(os.path.join(self.base_dir, "..", "models", "plane.obj"))
             ])
             
         self.enabled_texture = [
-            Material("src/models/frdm_en.png"),
-            Material("src/models/plane_en.png")
+            Material(os.path.join(self.base_dir, "..", "models", "frdm_en.png")),
+            Material(os.path.join(self.base_dir, "..", "models", "plane_en.png"))
         ]
 
         self.disabled_texture = [
-            Material("src/models/frdm_dis.png"),
-            Material("src/models/plane_dis.png")
+            Material(os.path.join(self.base_dir, "..", "models", "frdm_dis.png")),
+            Material(os.path.join(self.base_dir, "..", "models", "plane_dis.png"))
         ]
 
         self.shader = create_shader(
-            vertex_filepath = "src/shaders/vertex.txt", 
-            fragment_filepath = "src/shaders/fragment.txt"
+            vertex_filepath = os.path.join(self.base_dir, "..", "shaders", "vertex.txt"), 
+            fragment_filepath = os.path.join(self.base_dir, "..", "shaders", "fragment.txt")
         )
 
         glUseProgram(self.shader)
