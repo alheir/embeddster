@@ -121,6 +121,8 @@ class FrdmViewerWidget(QOpenGLWidget):
         for x in range(STATION_COUNT):
             for mesh in self.stations_mesh[x]:
                 mesh.destroy()
-        self.enabled_texture.destroy()
-        self.disabled_texture.destroy()
+        for material in self.enabled_texture:
+            material.destroy()
+        for material in self.disabled_texture:
+            material.destroy()
         glDeleteProgram(self.shader)
