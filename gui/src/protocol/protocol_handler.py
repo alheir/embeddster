@@ -46,11 +46,14 @@ class ProtocolHandler:
                     parts = line.split()
                     can_id_hex = parts[1].split('=')[1]  # e.g., "0x100"
                     can_id = int(can_id_hex, 16)
-                    ascii_part = parts[3].strip("'")  # e.g., "R45"
-                    if 0x100 <= can_id < 0x100 + STATION_COUNT and len(ascii_part) >= 2: # Up to STATION_COUNT stations
+                    # Extract ascii part from Data=...='{ascii}'
+                    data_part = parts[2]  # e.g., "Data=0x522B3135='R+15'"
+                    ascii_part = data_part.split('=')[2].strip("'")  # e.g., "R+15"
+                    if 0x100 <= can_id < 0x100 + STATION_COUNT and len(ascii_part) >= 2:  # Up to STATION_COUNT stations
                         station_index = can_id - 0x100
                         angle_char = ascii_part[0]
-                        value = int(ascii_part[1:])
+                        value_str = ascii_part[1:]
+                        value = int(value_str)  # Handles positive/negative
                         angle_map = {'R': 0, 'C': 1, 'O': 2}  # Roll, Pitch, Yaw
                         if angle_char in angle_map:
                             messages.append({
