@@ -335,7 +335,7 @@ class GodModeWidget(QWidget):
         
         self.rx_table = QTableWidget()
         self.rx_table.setColumnCount(6)
-        self.rx_table.setHorizontalHeaderLabels(["#", "Timestamp", "CAN ID", "DLC", "Data (Hex)", "Data (ASCII)"])
+        self.rx_table.setHorizontalHeaderLabels(["Timestamp", "CAN ID", "DLC", "Type", "Data (Hex)", "Data (ASCII)"])
         self.rx_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
         self.rx_table.horizontalHeader().setStretchLastSection(True)
         self.rx_table.setAlternatingRowColors(True)
@@ -443,7 +443,8 @@ class GodModeWidget(QWidget):
         hex_data = ' '.join(f'{b:02X}' for b in data)
         ascii_data = ''.join(chr(b) if 32 <= b < 127 else '.' for b in data)
         
-        msg_entry = f"[{timestamp}] ID=0x{can_id:03X} DLC={len(data)} Data=[{hex_data}] ASCII=[{ascii_data}]"
+        type_str = "LED" if len(data) == 1 and data[0] & 0x80 else "Angle"
+        msg_entry = f"[{timestamp}] ID=0x{can_id:03X} DLC={len(data)} Type={type_str} Data=[{hex_data}] ASCII=[{ascii_data}]"
         self.message_history.append(msg_entry)
         
         if len(self.message_history) > self.max_history:
@@ -458,10 +459,11 @@ class GodModeWidget(QWidget):
         self.rx_table.insertRow(row)
         
         self.message_counter += 1
-        self.rx_table.setItem(row, 0, QTableWidgetItem(str(self.message_counter)))
-        self.rx_table.setItem(row, 1, QTableWidgetItem(timestamp))
-        self.rx_table.setItem(row, 2, QTableWidgetItem(f"0x{can_id:03X}"))
-        self.rx_table.setItem(row, 3, QTableWidgetItem(str(len(data))))
+        self.rx_table.setItem(row, 0, QTableWidgetItem(timestamp))
+        self.rx_table.setItem(row, 1, QTableWidgetItem(f"0x{can_id:03X}"))
+        self.rx_table.setItem(row, 2, QTableWidgetItem(str(len(data))))
+        type_str = "LED" if len(data) == 1 and data[0] & 0x80 else "Angle"
+        self.rx_table.setItem(row, 3, QTableWidgetItem(type_str))
         self.rx_table.setItem(row, 4, QTableWidgetItem(hex_data))
         self.rx_table.setItem(row, 5, QTableWidgetItem(ascii_data))
         
