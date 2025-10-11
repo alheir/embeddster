@@ -80,6 +80,7 @@ void setup()
 
     Serial.println("Setup complete, starting in CAN SNIFFER mode (Blue)");
     board.setColorLED(2, true); // Blue ON
+    board.refresh();
     Serial.println("\n-->> Send 'M1' to switch to CAN SNIFFER mode, 'M2' to RANDOM SEND mode\n\n");
 }
 
