@@ -119,7 +119,8 @@ class FrdmViewerWidget(QOpenGLWidget):
         """ cleanup the app, run exit code """
 
         for x in range(STATION_COUNT):
-            self.stations_mesh[x].destroy()
+            for mesh in self.stations_mesh[x]:
+                mesh.destroy()
         self.enabled_texture.destroy()
         self.disabled_texture.destroy()
         glDeleteProgram(self.shader)
