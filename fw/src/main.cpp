@@ -79,8 +79,7 @@ void setup()
     Serial.println("\n~~~~\n");
 
     Serial.println("Setup complete, starting in CAN SNIFFER mode (Blue)");
-    npxl.setPixelColor(0, npxl.Color(0, 0, NPXL_BRIGHTNESS));
-    npxl.show();
+    board.setColorLED(2, true); // Blue ON
     Serial.println("\n-->> Send 'M1' to switch to CAN SNIFFER mode, 'M2' to RANDOM SEND mode\n\n");
 }
 
@@ -202,26 +201,34 @@ void loop()
     if (Serial.available()) {
         String cmd = Serial.readStringUntil('\n');
         cmd.trim();
-        if (cmd == "M1") {
+        if (cmd == "M1" && currState != STATE_SNIFFER) {
             Serial.println("\n\n~~~~Setting CAN SNIFFER mode (Blue)~~~~\n");
             currState = STATE_SNIFFER;
-            npxl.setPixelColor(0, npxl.Color(0, 0, NPXL_BRIGHTNESS));
-            npxl.show();
-        } else if (cmd == "M2") {
+
+            board.setColorLED(2, true); // Blue ON
+            board.setColorLED(3, false); // Green OFF
+            board.refresh();
+
+        } else if (cmd == "M2" && currState != STATE_RANDOM_SEND) {
             Serial.println("\n\n~~~~Setting RANDOM SEND mode (Green)~~~~\n");
             currState = STATE_RANDOM_SEND;
-            npxl.setPixelColor(0, npxl.Color(0, NPXL_BRIGHTNESS, 0));
-            npxl.show();
+
+            board.setColorLED(2, false); // Blue OFF
+            board.setColorLED(3, true); // Green ON
+            board.refresh();
+
         } else if (cmd.startsWith("MODE_")) {
             String mode = cmd.substring(5);
             if (mode == "NORMAL") {
                 CAN.setMode(MCP_NORMAL);
                 Serial.println("CAN mode set to NORMAL");
-                board.setColorLED(0, false); // Indicate normal mode off with white LED
+                board.setColorLED(0, false); // normal mode ON with white LED OFF
+                board.refresh();
             } else if (mode == "LOOPBACK") {
                 CAN.setMode(MCP_LOOPBACK);
                 Serial.println("CAN mode set to LOOPBACK");
-                board.setColorLED(0, true); // Indicate normal mode on with white LED
+                board.setColorLED(0, true); // loopback mode ON with white LED ON
+                board.refresh();
             }
         } else if (cmd.startsWith("SEND_")) {
             // Parse SEND_{can_id:x}_{byte1:02x}_{byte2:02x}...
@@ -279,6 +286,4 @@ void loop()
             }
         }
     }
-
-    board.refresh();
 }
