@@ -64,17 +64,32 @@ class ProtocolHandler:
                             if 0 <= station_index < STATION_COUNT:
                                 angle_char = ascii_part[0]
                                 value_str = ascii_part[1:]
-                                value = int(value_str)
-                                angle_map = {'R': 0, 'C': 1, 'O': 2}
-                                if angle_char in angle_map:
+                                try:
+                                    value = int(value_str)
+                                    angle_map = {'R': 0, 'C': 1, 'O': 2}
+                                    if angle_char in angle_map:
+                                        messages.append({
+                                            'type': 'angle',
+                                            'station_index': station_index,
+                                            'angle': angle_map[angle_char],
+                                            'value': value,
+                                            'can_id': can_id,
+                                            'data': data_bytes
+                                        })
+                                except ValueError:
+                                    # Not a valid angle, treat as unknown
                                     messages.append({
-                                        'type': 'angle',
-                                        'station_index': station_index,
-                                        'angle': angle_map[angle_char],
-                                        'value': value,
+                                        'type': 'unknown',
                                         'can_id': can_id,
                                         'data': data_bytes
                                     })
+                        else:
+                            # Not LED and not angle, unknown
+                            messages.append({
+                                'type': 'unknown',
+                                'can_id': can_id,
+                                'data': data_bytes
+                            })
                 except (ValueError, IndexError):
                     logging.warning(f"[ProtocolHandler] Failed to parse CAN message: {line}")
         return messages

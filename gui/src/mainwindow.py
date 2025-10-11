@@ -202,7 +202,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     
                     # Forward to God Mode if open
                     if self.god_mode_widget and self.god_mode_widget.isVisible():
-                        self.god_mode_widget.on_can_message_received(can_id, data)
+                        self.god_mode_widget.on_can_message_received(msg)
                     
                     # Process angles in main GUI, ignore LEDs
                     if msg['type'] == 'angle':
