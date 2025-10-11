@@ -196,24 +196,24 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 if not messages:
                     continue
                 for msg in messages:
-                    if self.god_mode_widget and self.god_mode_widget.isVisible():
-                        # When God Mode is active, only forward to God Mode (skip main GUI processing)
-                        try:
-                            station_index = int(msg.get('station_index'))
-                            can_id = 0x100 + station_index
-                            angle_id = msg.get('angle')
-                            value = msg.get('value')
-                            angle_index = self._resolve_angle_index(angle_id)
-                            if angle_index in (0, 1, 2):
-                                angle_char = ['R', 'C', 'O'][angle_index]
-                                data_str = f"{angle_char}{value}"
-                                data = data_str.encode('ascii')
-                                self.god_mode_widget.on_can_message_received(can_id, data)
-                        except Exception as e:
-                            logging.warning(f"[MainWindow] Error forwarding to God Mode: {e}")
-                    else:
-                        # Normal operation: process for main GUI
-                        self.processParsedMessage(msg)
+                    
+                    # Forward to God Mode if open
+                    try:
+                        station_index = int(msg.get('station_index'))
+                        can_id = 0x100 + station_index
+                        angle_id = msg.get('angle')
+                        value = msg.get('value')
+                        angle_index = self._resolve_angle_index(angle_id)
+                        if angle_index in (0, 1, 2):
+                            angle_char = ['R', 'C', 'O'][angle_index]
+                            data_str = f"{angle_char}{value}"
+                            data = data_str.encode('ascii')
+                            self.god_mode_widget.on_can_message_received(can_id, data)
+                    except Exception as e:
+                        logging.warning(f"[MainWindow] Error forwarding to God Mode: {e}")
+                    
+                    # Process normally
+                    self.processParsedMessage(msg)
                             
         except (SerialException, OSError) as e:
             logging.error(f"[MainWindow] Error reading from serial port: {e}")
