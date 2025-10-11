@@ -196,11 +196,6 @@ class GodModeWidget(QWidget):
         angle_layout = QVBoxLayout()
         
         angle_form = QHBoxLayout()
-        angle_form.addWidget(QLabel("Group:"))
-        self.angle_group_spin = QSpinBox()
-        self.angle_group_spin.setRange(0, STATION_COUNT - 1)
-        angle_form.addWidget(self.angle_group_spin)
-        
         angle_form.addWidget(QLabel("Type:"))
         self.angle_type_combo = QComboBox()
         self.angle_type_combo.addItems(["R (Roll)", "C (Pitch)", "O (Yaw)"])
@@ -214,6 +209,28 @@ class GodModeWidget(QWidget):
         
         angle_form.addStretch()
         angle_layout.addLayout(angle_form)
+        
+        group_sel_layout = QHBoxLayout()
+        group_sel_layout.addWidget(QLabel("Groups:"))
+        self.angle_group_checks = []
+        for i in range(STATION_COUNT):
+            cb = QCheckBox(f"{i}")
+            cb.setChecked(i == 0)  # Default first group selected
+            self.angle_group_checks.append(cb)
+            group_sel_layout.addWidget(cb)
+        
+        select_all_btn = QPushButton("All")
+        select_all_btn.setMaximumWidth(40)
+        select_all_btn.clicked.connect(lambda: [cb.setChecked(True) for cb in self.angle_group_checks])
+        group_sel_layout.addWidget(select_all_btn)
+        
+        select_none_btn = QPushButton("None")
+        select_none_btn.setMaximumWidth(40)
+        select_none_btn.clicked.connect(lambda: [cb.setChecked(False) for cb in self.angle_group_checks])
+        group_sel_layout.addWidget(select_none_btn)
+        
+        group_sel_layout.addStretch()
+        angle_layout.addLayout(group_sel_layout)
         
         continuous_layout = QHBoxLayout()
         self.continuous_check = QCheckBox("Continuous send")
@@ -554,15 +571,23 @@ class GodModeWidget(QWidget):
     
     def _send_single_angle(self):
         try:
-            group = self.angle_group_spin.value()
             angle_type = self.angle_type_combo.currentText()[0]
             value = self.angle_value_spin.value()
             
-            can_id = 0x100 + group
-            data = f"{angle_type}{value:+d}".encode('ascii')
+            selected_groups = [i for i, cb in enumerate(self.angle_group_checks) if cb.isChecked()]
             
-            self._send_can_message(can_id, data)
-            self.log_text.append(f"✅ Angle: G{group} {angle_type}={value}°")
+            if not selected_groups:
+                self.log_text.append("❌ No groups selected for angle message")
+                return
+            
+            for group in selected_groups:
+                can_id = 0x100 + group
+                data = f"{angle_type}{value:+d}".encode('ascii')
+                
+                self._send_can_message(can_id, data)
+            
+            groups_str = ','.join(str(g) for g in selected_groups)
+            self.log_text.append(f"✅ Angle: Groups {groups_str} {angle_type}={value}°")
         except Exception as e:
             self.log_text.append(f"❌ Angle send error: {e}")
     
