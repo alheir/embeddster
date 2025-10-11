@@ -90,10 +90,10 @@ void TP1BOARD::setLED(uint8_t led, bool on)
 
 void TP1BOARD::refresh()
 {
-    // uint32_t now = millis();
-    // if (now - lastRefresh < TP1BOARD_REFRESH_MS)
-    //     return;
-    // lastRefresh = now;
+    uint32_t now = millis();
+    if (now - lastRefresh < TP1BOARD_REFRESH_MS)
+        return;
+    lastRefresh = now;
 
     // MSB first: chip1 then chip0)
     uint8_t data[2] = {0, 0};

@@ -7,7 +7,7 @@
 
 #define TP1BOARD_NDIGITS 4
 #define TP1BOARD_NLEDS 6
-#define TP1BOARD_REFRESH_MS 5 // Multiplex refresh interval
+#define TP1BOARD_REFRESH_MS 10 // Multiplex refresh interval
 
 // LED indices for easier reference
 enum LedIndex {

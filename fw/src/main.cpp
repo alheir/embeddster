@@ -217,9 +217,11 @@ void loop()
             if (mode == "NORMAL") {
                 CAN.setMode(MCP_NORMAL);
                 Serial.println("CAN mode set to NORMAL");
+                board.setColorLED(0, false); // Indicate normal mode off with white LED
             } else if (mode == "LOOPBACK") {
                 CAN.setMode(MCP_LOOPBACK);
                 Serial.println("CAN mode set to LOOPBACK");
+                board.setColorLED(0, true); // Indicate normal mode on with white LED
             }
         } else if (cmd.startsWith("SEND_")) {
             // Parse SEND_{can_id:x}_{byte1:02x}_{byte2:02x}...
@@ -277,4 +279,6 @@ void loop()
             }
         }
     }
+
+    board.refresh();
 }
