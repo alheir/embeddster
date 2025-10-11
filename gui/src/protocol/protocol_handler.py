@@ -1,5 +1,6 @@
 from typing import List, Dict, Any
 import logging
+from src.package.Station import STATION_COUNT
 
 class ProtocolHandler:
     """
@@ -11,7 +12,7 @@ class ProtocolHandler:
       - Construcción de mensajes salientes en build_led_command().
     """
     def __init__(self) -> None:
-        # Buffer/s, constantes, ...        
+        self.buffer = b""  # Buffer for accumulating incoming data
         logging.info("[ProtocolHandler] Inicializado. Listo para recibir bytes del puerto serie.")
 
     def on_bytes(self, data: bytes) -> List[Dict[str, Any]]:
@@ -34,13 +35,32 @@ class ProtocolHandler:
           # Lista vacía si no hay frames completos:
           # return []
         """
-        logging.debug(f"[ProtocolHandler] RX chunk: {data}")
-
-        #
-        #
-        #
-
-        raise NotImplementedError("Implementar on_bytes(data) con framing y parseo de su protocolo.")
+        self.buffer += data
+        messages = []
+        while b'\n' in self.buffer:
+            line, self.buffer = self.buffer.split(b'\n', 1)
+            line = line.decode('utf-8', errors='ignore').strip()
+            if line.startswith("RXED:"):
+                # Parse ESP32's CAN message format: "RXED: ID=0x{id} Data=0x{data}='{ascii}' Len={len}"
+                try:
+                    parts = line.split()
+                    can_id_hex = parts[1].split('=')[1]  # e.g., "0x100"
+                    can_id = int(can_id_hex, 16)
+                    ascii_part = parts[3].strip("'")  # e.g., "R45"
+                    if 0x100 <= can_id < 0x100 + STATION_COUNT and len(ascii_part) >= 2: # Up to STATION_COUNT stations
+                        station_index = can_id - 0x100
+                        angle_char = ascii_part[0]
+                        value = int(ascii_part[1:])
+                        angle_map = {'R': 0, 'C': 1, 'O': 2}  # Roll, Pitch, Yaw
+                        if angle_char in angle_map:
+                            messages.append({
+                                'station_index': station_index,
+                                'angle': angle_map[angle_char],
+                                'value': value
+                            })
+                except (ValueError, IndexError):
+                    logging.warning(f"[ProtocolHandler] Failed to parse CAN message: {line}")
+        return messages
 
     def build_led_command(self, station_index: int, r: bool, g: bool, b: bool) -> bytes:
         """
@@ -53,12 +73,7 @@ class ProtocolHandler:
         Debe devolver:
           - bytes listos para write() del puerto serie.
         """
-        logging.info(f"[ProtocolHandler] Build LED cmd -> station={station_index}, R={r}, G={g}, B={b}")
 
-        #
-        #
-        #
-        
-        # return b'Prender LED rojo del grupo 5'
-
-        raise NotImplementedError("Implementar build_led_command(...) para su protocolo.")
+        cmd = f"LED_{station_index}_{int(r)}_{int(g)}_{int(b)}\n"
+        logging.info(f"[ProtocolHandler] Built LED cmd: {cmd.strip()}")
+        return cmd.encode('utf-8')
