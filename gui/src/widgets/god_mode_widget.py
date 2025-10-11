@@ -689,6 +689,16 @@ class GodModeWidget(QWidget):
         logging.debug(f"[GodMode] Sent: {cmd.strip()}")
         
     def closeEvent(self, event):
+        # Send reset command to firmware: NORMAL mode
+        if self.main_window.serialConnected and self.main_window.serial.is_open:
+            try:
+                self.main_window.serial.write(b"MODE_NORMAL\n")
+                self.main_window.serial.write(b"M1\n")
+                logging.info("[GodMode] Sent reset command to firmware: NORMAL mode")
+            except Exception as e:
+                logging.warning(f"[GodMode] Failed to send reset commands on close: {e}")
+        
+        # Stop timers and accept the event
         self.stop_continuous_sending()
         self.stop_random_traffic()
         self.update_timer.stop()

@@ -193,13 +193,13 @@ void loop()
     if (Serial.available()) {
         String cmd = Serial.readStringUntil('\n');
         cmd.trim();
-        if (cmd == "M1" && currState != STATE_SNIFFER) {
-            Serial.println("\n\n~~~~Switching to CAN SNIFFER mode (Blue)~~~~\n");
+        if (cmd == "M1") {
+            Serial.println("\n\n~~~~Setting CAN SNIFFER mode (Blue)~~~~\n");
             currState = STATE_SNIFFER;
             npxl.setPixelColor(0, npxl.Color(0, 0, NPXL_BRIGHTNESS));
             npxl.show();
-        } else if (cmd == "M2" && currState != STATE_RANDOM_SEND) {
-            Serial.println("\n\n~~~~Switching to RANDOM SEND mode (Green)~~~~\n");
+        } else if (cmd == "M2") {
+            Serial.println("\n\n~~~~Setting RANDOM SEND mode (Green)~~~~\n");
             currState = STATE_RANDOM_SEND;
             npxl.setPixelColor(0, npxl.Color(0, NPXL_BRIGHTNESS, 0));
             npxl.show();

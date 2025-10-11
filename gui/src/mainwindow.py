@@ -250,6 +250,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     self.simulation_widget.close()
                     self.simulation_widget = None
                 if self.serial.is_open:
+                    
+                    # Send M1 command to put firmware in sniffer mode
+                    try:
+                        self.serial.write(b"M1\n")
+                        logging.info("[MainWindow] Sent M1 command to firmware on serial disconnect")
+                    except Exception as e:
+                        logging.warning(f"[MainWindow] Failed to send M1 on serial disconnect: {e}")
+                        
                     self.serial.close()
                     logging.info("[MainWindow] Disconnected from serial port")
             except SerialException as e:
@@ -356,10 +364,22 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.stationInfoWidgets[i].setLastUpdateTime(None)
 
     def closeEvent(self, event):
+        # If God Mode is open, send reset commands to firmware before closing
+        if self.god_mode_widget and self.god_mode_widget.isVisible() and self.serialConnected and self.serial.is_open:
+            try:
+                self.serial.write(b"MODE_NORMAL\n")
+                self.serial.write(b"M1\n")
+                logging.info("[MainWindow] Sent reset command to firmware on app close: NORMAL mode")
+            except Exception as e:
+                logging.warning(f"[MainWindow] Failed to send reset commands on app close: {e}")
+        
+        # Close widgets
         if self.simulation_widget:
             self.simulation_widget.close()
         if self.god_mode_widget:
             self.god_mode_widget.close()
+        
+        # Close serial
         try:
             if self.serial.is_open:
                 self.serial.close()
@@ -390,3 +410,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.god_mode_widget.show()
         self.god_mode_widget.raise_()
         self.god_mode_widget.activateWindow()
+        
+        # Send M1 command to put firmware in sniffer mode
+        try:
+            self.serial.write(b"M1\n")
+            logging.info("[MainWindow] Sent M1 command to firmware on God Mode open")
+        except Exception as e:
+            logging.warning(f"[MainWindow] Failed to send M1 on God Mode open: {e}")
