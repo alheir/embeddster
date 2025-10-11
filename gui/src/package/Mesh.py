@@ -165,11 +165,3 @@ class Mesh:
         
         glDeleteVertexArrays(1,(self.vao,))
         glDeleteBuffers(1,(self.vbo,))
-    
-    def destroy(self) -> None:
-        """
-            Free any allocated memory.
-        """
-        
-        glDeleteVertexArrays(1,(self.vao,))
-        glDeleteBuffers(1,(self.vbo,))
