@@ -368,8 +368,46 @@ void do_can_random_send()
     int16_t newVal = lastVal[randomStation][angleType] + random(-MAX_DELTA_ANGLE, MAX_DELTA_ANGLE + 1);
     newVal = constrain(newVal, -179, 180);
 
+    // Generate angle value in different valid formats (as per spec):
+    // Valid formats: 'R-34', 'C0', 'O67', 'R+138', 'R00', 'C-072', 'R+107', 'O000'
+    // Randomly choose format style
     char buf[8];
-    int len = snprintf(buf, sizeof(buf), "%c%d", angleId, newVal);
+    int formatStyle = random(0, 6);
+    int len;
+    
+    switch (formatStyle)
+    {
+        case 0: // Simple format: "R-34" or "C0" (no leading sign for positive, no padding)
+            if (newVal >= 0)
+                len = snprintf(buf, sizeof(buf), "%c%d", angleId, newVal);
+            else
+                len = snprintf(buf, sizeof(buf), "%c%d", angleId, newVal);
+            break;
+        case 1: // Explicit sign format: "R+138" (always show sign)
+            len = snprintf(buf, sizeof(buf), "%c%+d", angleId, newVal);
+            break;
+        case 2: // Zero-padded 2 digits: "R00" or "C-07"
+            if (newVal >= 0)
+                len = snprintf(buf, sizeof(buf), "%c%02d", angleId, newVal);
+            else
+                len = snprintf(buf, sizeof(buf), "%c%03d", angleId, newVal); // -XX format
+            break;
+        case 3: // Zero-padded 3 digits: "O000" or "C-072"
+            if (newVal >= 0)
+                len = snprintf(buf, sizeof(buf), "%c%03d", angleId, newVal);
+            else
+                len = snprintf(buf, sizeof(buf), "%c%04d", angleId, newVal); // -XXX format
+            break;
+        case 4: // Explicit positive sign with padding: "R+107"
+            len = snprintf(buf, sizeof(buf), "%c%+03d", angleId, newVal);
+            break;
+        default: // Mix: sometimes simple, sometimes with sign
+            if (newVal >= 0 && random(0, 2) == 0)
+                len = snprintf(buf, sizeof(buf), "%c%+d", angleId, newVal);
+            else
+                len = snprintf(buf, sizeof(buf), "%c%d", angleId, newVal);
+            break;
+    }
 
     if (CAN.sendMsgBuf(canId, 0, len, (uint8_t *)buf) == CAN_OK)
     {

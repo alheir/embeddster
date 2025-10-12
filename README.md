@@ -56,7 +56,7 @@
 - **Funcionalidades**:
   - **Modos de operación**: Sniffer CAN (M1) y Random Send (M2), cambiables por comandos seriales.
   - **Protocolo serial**: Comandos para cambiar modos CAN (NORMAL/LOOPBACK), enviar mensajes CAN personalizados y controlar LEDs RGB.
-  - **Reintentos automáticos**: Si falla el envío de un mensaje CAN (por error de bus), entra en "Retry Mode" (LED amarillo parpadeando) e intenta reenviarlo cada 2 segundos.
+  - **Reintentos automáticos**: Si falla el envío de un mensaje CAN (por error de bus), entra en "Retry Mode" (LED amarillo encendido) e intenta reenviarlo cada 2 segundos.
   - **Indicadores visuales**: LEDs de colores para estado del sistema (azul=sniffer, verde=random send, amarillo=retry, blanco=loopback).
 
 ### GUI (Python)
@@ -130,9 +130,25 @@ M1
 ```bash
 M2
 
-# El ESP32 enviará mensajes cada ~100ms:
-# SENT ANGLE: ID=0x100 Data=0x522D3134='R-14' Len=5
+# El ESP32 enviará mensajes aleatorios con diferentes formatos:
+# SENT ANGLE: ID=0x100 Data=0x522D3134='R-14' Len=4    # Formato simple
+# SENT ANGLE: ID=0x101 Data=0x432B3435='C+45' Len=4    # Con signo explícito
+# SENT ANGLE: ID=0x102 Data=0x4F3030='O00' Len=3       # Zero-padded 2 dígitos
+# SENT ANGLE: ID=0x100 Data=0x522D303732='R-072' Len=5 # Zero-padded 3 dígitos
+# SENT ANGLE: ID=0x101 Data=0x432B313037='C+107' Len=6 # Signo + padding
 ```
+
+**Características del Random Send**:
+- Simula **4 estaciones** (IDs 0x100-0x103) con tráfico aleatorio.
+- Genera mensajes en **6 formatos diferentes** para probar robustez del parser:
+  - Simple: `'R-34'`, `'C0'`, `'O67'` (sin signo para positivos, sin padding)
+  - Signo explícito: `'R+138'`, `'C+5'` (siempre muestra +/-)
+  - Zero-padded 2 dígitos: `'R00'`, `'C-07'`
+  - Zero-padded 3 dígitos: `'O000'`, `'C-072'`
+  - Signo + padding: `'R+107'`, `'C+045'`
+  - Mixto (aleatorio entre formatos)
+- Intervalos aleatorios entre **100ms y 2 segundos** entre mensajes.
+- Valores varían en hasta ±30° del anterior, limitados a -179° a 180°.
 
 #### 3. Enviar mensaje CAN personalizado
 ```bash
@@ -285,9 +301,15 @@ embeddster/
 
 #### Ángulos (Angle Messages)
 - **ID**: `0x100 + {station_number}` (e.g., estación 0 = 0x100, estación 1 = 0x101).
-- **Datos**: ASCII `{tipo}{valor}` (e.g., `R-10`, `C+45`, `O180`).
-  - `R` = Roll, `C` = Pitch (Cabeceo), `O` = Yaw (Orientación).
-  - Valor: -179 a 180 grados.
+- **Datos**: ASCII `{tipo}{valor}` en formato variable (1-6 bytes):
+  - `{tipo}`: `'R'` (Roll), `'C'` (Pitch/Cabeceo), `'O'` (Yaw/Orientación)
+  - `{valor}`: Ángulo entre -179° y 180° en diferentes formatos válidos:
+    - **Simple**: `'R-10'`, `'C0'`, `'O67'` (sin signo para positivos)
+    - **Signo explícito**: `'R+138'`, `'C+5'` (con + o -)
+    - **Zero-padded**: `'R00'`, `'C-072'`, `'O000'` (2 o 3 dígitos)
+    - **Combinado**: `'R+107'`, `'C+045'` (signo + padding)
+  - **Ejemplos válidos**: `'R-34'`, `'C0'`, `'O67'`, `'R+138'`, `'R00'`, `'C-072'`, `'R+107'`, `'O000'`
+  - Longitud variable (DLC 2-5 bytes típicamente).
 
 #### LEDs (LED Commands)
 - **ID**: Mismo que ángulos (`0x100 + station`).
