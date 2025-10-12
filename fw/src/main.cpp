@@ -1,31 +1,76 @@
 #include <Arduino.h>
 #include "pin_assignment.h"
 
-#define BAUD_RATE 115200 // explicity defined in platformio.ini
+// ============================================================================
+// CONFIGURACIÓN Y DEFINICIONES
+// ============================================================================
 
+#define BAUD_RATE 115200
+#define SETUP_DELAY_MS 250
+
+// NeoPixel
 #include <Adafruit_NeoPixel.h>
 #define NUMPIXELS 1
-Adafruit_NeoPixel npxl(NUMPIXELS, PIN_NPXL, NEO_GRB + NEO_KHZ800);
 #define NPXL_BRIGHTNESS 15
+Adafruit_NeoPixel npxl(NUMPIXELS, PIN_NPXL, NEO_GRB + NEO_KHZ800);
 
+// MCP CAN
 #include <mcp_can.h>
 #include <SPI.h>
 MCP_CAN CAN(PIN_MCP_nCS);
 
+// TP1 Board
 #include "tp1board.h"
 TP1BOARD board;
 
-#define SETUP_DELAY_MS 250
+// ============================================================================
+// ENUMS Y ESTRUCTURAS
+// ============================================================================
+
+enum State
+{
+    STATE_SNIFFER,
+    STATE_RANDOM_SEND,
+    STATE_N
+};
+
+// ============================================================================
+// VARIABLES GLOBALES
+// ============================================================================
+
+// Estados
+uint8_t currState = STATE_SNIFFER;
+uint8_t nextState = STATE_RANDOM_SEND;
+
+// Retry mechanism
+#define RETRY_INTERVAL_MS 2000
+bool retryMode = false;
+uint32_t lastRetryAttempt = 0;
+char retryBuffer[8];
+int retryLen = 0;
+long retryId = 0;
+
+// Node configuration
+#define GROUP_NUMBER 0
+#define NODE_ID (0x100 + GROUP_NUMBER)
+
+// ============================================================================
+// DECLARACIÓN DE FUNCIONES
+// ============================================================================
 
 void do_can_sniffer();
 void do_can_random_send();
-void enterRetryMode(long canId, const char* data, int len);
+void enterRetryMode(long canId, const char *data, int len);
 void exitRetryMode(bool success);
+
+// ============================================================================
+// SETUP
+// ============================================================================
 
 void setup()
 {
     Serial.begin(BAUD_RATE);
-    Serial.println("\n\n~~~~TP1BOARD CAN SNIFFER/RANDOM SENDER~~~~\n");
+    Serial.println("\n\n~~~~CAN SNIFFER/RANDOM SENDER~~~~\n");
     Serial.println("Serial init ok");
 
     delay(SETUP_DELAY_MS);
@@ -52,7 +97,7 @@ void setup()
     Serial.println("\n~~~~\n");
 
     board.begin();
-    for(int i=0; i<3; i++)
+    for (int i = 0; i < 3; i++)
     {
         board.setColorLEDs(true, true, true, true);
         board.refresh();
@@ -85,31 +130,147 @@ void setup()
     Serial.println("\n-->> Send 'M1' to switch to CAN SNIFFER mode, 'M2' to RANDOM SEND mode\n\n");
 }
 
-enum State
+// ============================================================================
+// LOOP PRINCIPAL
+// ============================================================================
+
+void loop()
 {
-    STATE_SNIFFER,
-    STATE_RANDOM_SEND,
-    STATE_N
-};
+    board.refresh();
 
-uint8_t currState = STATE_SNIFFER;  // Default to sniffer
-uint8_t nextState = STATE_RANDOM_SEND;
+    switch (currState)
+    {
+    case STATE_SNIFFER:
+        do_can_sniffer();
+        break;
+    case STATE_RANDOM_SEND:
+        do_can_random_send();
+        break;
+    }
 
+    if (Serial.available())
+    {
+        String cmd = Serial.readStringUntil('\n');
+        cmd.trim();
+        if (cmd == "M1" && currState != STATE_SNIFFER)
+        {
+            Serial.println("\n\n~~~~Setting CAN SNIFFER mode (Blue)~~~~\n");
+            currState = STATE_SNIFFER;
 
-// Retry mechanism globals
-#define RETRY_INTERVAL_MS 2000
-bool retryMode = false;
-uint32_t lastRetryAttempt = 0;
-char retryBuffer[8];
-int retryLen = 0;
-long retryId = 0;
+            board.setColorLED(2, true);  // Blue ON
+            board.setColorLED(3, false); // Green OFF
+        }
+        else if (cmd == "M2" && currState != STATE_RANDOM_SEND)
+        {
+            Serial.println("\n\n~~~~Setting RANDOM SEND mode (Green)~~~~\n");
+            currState = STATE_RANDOM_SEND;
+
+            board.setColorLED(2, false); // Blue OFF
+            board.setColorLED(3, true);  // Green ON
+        }
+        else if (cmd.startsWith("MODE_"))
+        {
+            String mode = cmd.substring(5);
+            if (mode == "NORMAL")
+            {
+                CAN.setMode(MCP_NORMAL);
+                Serial.println("CAN mode set to NORMAL");
+                board.setColorLED(0, false); // normal mode ON with white LED OFF
+            }
+            else if (mode == "LOOPBACK")
+            {
+                CAN.setMode(MCP_LOOPBACK);
+                Serial.println("CAN mode set to LOOPBACK");
+                board.setColorLED(0, true); // loopback mode ON with white LED ON
+            }
+        }
+        else if (cmd.startsWith("SEND_"))
+        {
+            // Parse SEND_{can_id:x}_{byte1:02x}_{byte2:02x}...
+            int first_ = cmd.indexOf('_');
+            int second_ = cmd.indexOf('_', first_ + 1);
+            if (first_ != -1 && second_ != -1)
+            {
+                String idStr = cmd.substring(first_ + 1, second_);
+                long can_id = strtol(idStr.c_str(), NULL, 16);
+                String dataStr = cmd.substring(second_ + 1);
+                unsigned char data[8];
+                int dataLen = 0;
+                int pos = 0;
+                while (pos < dataStr.length() && dataLen < 8)
+                {
+                    int next_ = dataStr.indexOf('_', pos);
+                    if (next_ == -1)
+                        next_ = dataStr.length();
+                    String byteStr = dataStr.substring(pos, next_);
+                    data[dataLen++] = strtol(byteStr.c_str(), NULL, 16);
+                    pos = next_ + 1;
+                }
+                if (CAN.sendMsgBuf(can_id, 0, dataLen, data) == CAN_OK)
+                {
+                    Serial.println("Custom CAN message sent");
+                }
+                else
+                {
+                    Serial.println("Error sending custom CAN msg");
+                }
+            }
+        }
+        else if (cmd.startsWith("LED_"))
+        {
+            // Parse LED_{station}_{r}_{g}_{b}
+            int parts[4];
+            int idx = 0;
+            int pos = 4; // After "LED_"
+            for (int i = 0; i < 4 && idx < 4; i++)
+            {
+                int next_ = cmd.indexOf('_', pos);
+                if (next_ == -1)
+                    next_ = cmd.length();
+                parts[idx++] = cmd.substring(pos, next_).toInt();
+                pos = next_ + 1;
+            }
+            if (idx == 4)
+            {
+                int station = parts[0];
+                int r = parts[1], g = parts[2], b = parts[3];
+                if (station == GROUP_NUMBER)
+                {
+                    // Set own NeoPixel
+                    npxl.setPixelColor(0, npxl.Color(r * NPXL_BRIGHTNESS, g * NPXL_BRIGHTNESS, b * NPXL_BRIGHTNESS));
+                    npxl.show();
+                    Serial.println("Own LED updated");
+                }
+                else
+                {
+                    // Send remote LED command via CAN, 1JKL 0RGB
+                    char ledCmd = 0x80 | ((station << 4) & 0x70) | ((r << 2) & 4) | ((g << 1) & 2) | ((b << 0) & 1);
+                    long can_id = 0x100 + GROUP_NUMBER; // sending from own group number
+                    if (CAN.sendMsgBuf(can_id, 0, 1, (uint8_t *)(&ledCmd)) == CAN_OK)
+                    {
+                        Serial.println("LED command sent via CAN");
+                    }
+                    else
+                    {
+                        Serial.println("Error sending LED CAN msg");
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ============================================================================
+// IMPLEMENTACIÓN - CAN SNIFFER
+// ============================================================================
 
 void do_can_sniffer()
 {
-    if (retryMode) {
+    if (retryMode)
+    {
         exitRetryMode(false);
     }
-    
+
     if (digitalRead(PIN_MCP_nINT) == LOW)
     {
         long unsigned int rxId;
@@ -143,8 +304,10 @@ void do_can_sniffer()
     }
 }
 
-#define GROUP_NUMBER 0 
-#define NODE_ID (0x100 + GROUP_NUMBER)
+// ============================================================================
+// IMPLEMENTACIÓN - RANDOM SEND
+// ============================================================================
+
 void do_can_random_send()
 {
     static uint32_t lastSendR = 0;
@@ -158,20 +321,25 @@ void do_can_random_send()
 
     uint32_t now = millis();
 
-    if (retryMode) {
-        if (now - lastRetryAttempt >= RETRY_INTERVAL_MS) {
+    if (retryMode)
+    {
+        if (now - lastRetryAttempt >= RETRY_INTERVAL_MS)
+        {
             lastRetryAttempt = now;
-            
+
             Serial.print("RETRY: Attempting to resend ID=0x");
             Serial.print(retryId, HEX);
             Serial.print(" Data='");
-            Serial.write((const uint8_t*)retryBuffer, retryLen);
+            Serial.write((const uint8_t *)retryBuffer, retryLen);
             Serial.println("'");
-            
-            if (CAN.sendMsgBuf(retryId, 0, retryLen, (uint8_t*)retryBuffer) == CAN_OK) {
+
+            if (CAN.sendMsgBuf(retryId, 0, retryLen, (uint8_t *)retryBuffer) == CAN_OK)
+            {
                 exitRetryMode(true);
                 digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
-            } else {
+            }
+            else
+            {
                 Serial.println("RETRY: Failed, will retry again...");
             }
         }
@@ -185,27 +353,33 @@ void do_can_random_send()
     simC = constrain(simC, -180, 180);
     simO = constrain(simO, -180, 180);
 
-    auto sendAngle = [&](char angleId, int16_t val, uint32_t& lastSend, int16_t& lastVal) {
-        if (abs(val - lastVal) >= 6 || (now - lastSend) >= 2000) {
+    auto sendAngle = [&](char angleId, int16_t val, uint32_t &lastSend, int16_t &lastVal)
+    {
+        if (abs(val - lastVal) >= 6 || (now - lastSend) >= 2000)
+        {
             char buf[5];
             int len = snprintf(buf, sizeof(buf), "%c%d", angleId, val);
-            if (CAN.sendMsgBuf(NODE_ID, 0, len, (uint8_t*)buf) == CAN_OK) {
+            if (CAN.sendMsgBuf(NODE_ID, 0, len, (uint8_t *)buf) == CAN_OK)
+            {
                 Serial.print("SENT ANGLE: ID=0x");
                 Serial.print(NODE_ID, HEX);
                 Serial.print(" Data=0x");
-                for (int i = 0; i < len; i++) {
+                for (int i = 0; i < len; i++)
+                {
                     Serial.print(buf[i], HEX);
                 }
                 Serial.print("='");
                 Serial.write(buf, len);
                 Serial.print("' Len=");
                 Serial.println(len);
-                
+
                 lastSend = now;
                 lastVal = val;
 
                 digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
-            } else {
+            }
+            else
+            {
                 Serial.print("Error sending CAN msg: ");
                 Serial.write(buf, len);
                 Serial.println();
@@ -215,144 +389,57 @@ void do_can_random_send()
     };
 
     sendAngle('R', simR, lastSendR, lastValR);
-    if (retryMode) return; // Stop if we entered retry mode
-    
+    if (retryMode)
+        return; // Stop if we entered retry mode
+
     sendAngle('C', simC, lastSendC, lastValC);
-    if (retryMode) return;
-    
+    if (retryMode)
+        return;
+
     sendAngle('O', simO, lastSendO, lastValO);
 
     delay(100); // update rate
 }
 
-void loop()
+// ============================================================================
+// IMPLEMENTACIÓN - RETRY MODE
+// ============================================================================
+
+void enterRetryMode(long canId, const char *data, int len)
 {
-    board.refresh();
-
-    switch (currState)
+    if (!retryMode)
     {
-    case STATE_SNIFFER:
-        do_can_sniffer();
-        break;
-    case STATE_RANDOM_SEND:
-        do_can_random_send();
-        break;
-    }
-
-    if (Serial.available()) {
-        String cmd = Serial.readStringUntil('\n');
-        cmd.trim();
-        if (cmd == "M1" && currState != STATE_SNIFFER) {
-            Serial.println("\n\n~~~~Setting CAN SNIFFER mode (Blue)~~~~\n");
-            currState = STATE_SNIFFER;
-
-            board.setColorLED(2, true); // Blue ON
-            board.setColorLED(3, false); // Green OFF
-
-        } else if (cmd == "M2" && currState != STATE_RANDOM_SEND) {
-            Serial.println("\n\n~~~~Setting RANDOM SEND mode (Green)~~~~\n");
-            currState = STATE_RANDOM_SEND;
-
-            board.setColorLED(2, false); // Blue OFF
-            board.setColorLED(3, true); // Green ON
-
-        } else if (cmd.startsWith("MODE_")) {
-            String mode = cmd.substring(5);
-            if (mode == "NORMAL") {
-                CAN.setMode(MCP_NORMAL);
-                Serial.println("CAN mode set to NORMAL");
-                board.setColorLED(0, false); // normal mode ON with white LED OFF
-            } else if (mode == "LOOPBACK") {
-                CAN.setMode(MCP_LOOPBACK);
-                Serial.println("CAN mode set to LOOPBACK");
-                board.setColorLED(0, true); // loopback mode ON with white LED ON
-            }
-        } else if (cmd.startsWith("SEND_")) {
-            // Parse SEND_{can_id:x}_{byte1:02x}_{byte2:02x}...
-            int first_ = cmd.indexOf('_');
-            int second_ = cmd.indexOf('_', first_ + 1);
-            if (first_ != -1 && second_ != -1) {
-                String idStr = cmd.substring(first_ + 1, second_);
-                long can_id = strtol(idStr.c_str(), NULL, 16);
-                String dataStr = cmd.substring(second_ + 1);
-                unsigned char data[8];
-                int dataLen = 0;
-                int pos = 0;
-                while (pos < dataStr.length() && dataLen < 8) {
-                    int next_ = dataStr.indexOf('_', pos);
-                    if (next_ == -1) next_ = dataStr.length();
-                    String byteStr = dataStr.substring(pos, next_);
-                    data[dataLen++] = strtol(byteStr.c_str(), NULL, 16);
-                    pos = next_ + 1;
-                }
-                if (CAN.sendMsgBuf(can_id, 0, dataLen, data) == CAN_OK) {
-                    Serial.println("Custom CAN message sent");
-                } else {
-                    Serial.println("Error sending custom CAN msg");
-                }
-            }
-        } else if (cmd.startsWith("LED_")) {
-            // Parse LED_{station}_{r}_{g}_{b}
-            int parts[4];
-            int idx = 0;
-            int pos = 4;  // After "LED_"
-            for (int i = 0; i < 4 && idx < 4; i++) {
-                int next_ = cmd.indexOf('_', pos);
-                if (next_ == -1) next_ = cmd.length();
-                parts[idx++] = cmd.substring(pos, next_).toInt();
-                pos = next_ + 1;
-            }
-            if (idx == 4) {
-                int station = parts[0];
-                int r = parts[1], g = parts[2], b = parts[3];
-                if (station == GROUP_NUMBER) {
-                    // Set own NeoPixel
-                    npxl.setPixelColor(0, npxl.Color(r * NPXL_BRIGHTNESS, g * NPXL_BRIGHTNESS, b * NPXL_BRIGHTNESS));
-                    npxl.show();
-                    Serial.println("Own LED updated");
-                } else {
-                    // Send remote LED command via CAN, 1JKL 0RGB
-                    char ledCmd = 0x80 | ((station << 4) & 0x70) | ((r  << 2) & 4) | ((g << 1) & 2) | ((b << 0) & 1);
-                    long can_id = 0x100 + GROUP_NUMBER; // sending from own group number
-                    if (CAN.sendMsgBuf(can_id, 0, 1, (uint8_t*)(&ledCmd)) == CAN_OK) {
-                        Serial.println("LED command sent via CAN");
-                    } else {
-                        Serial.println("Error sending LED CAN msg");
-                    }
-                }
-            }
-        }
-    }
-}
-
-void enterRetryMode(long canId, const char* data, int len) {
-    if (!retryMode) {
         retryMode = true;
         retryId = canId;
         retryLen = len;
         memcpy(retryBuffer, data, len);
-        
+
         Serial.println("\n~~~~ ENTERING RETRY MODE ~~~~");
         Serial.print("Failed message: ID=0x");
         Serial.print(canId, HEX);
         Serial.print(" Data='");
-        Serial.write((const uint8_t*)data, len);
+        Serial.write((const uint8_t *)data, len);
         Serial.println("'");
-        
+
         board.setColorLED(1, true); // Yellow LED flashing indicates retry
     }
 }
 
-void exitRetryMode(bool success) {
-    if (retryMode) {
+void exitRetryMode(bool success)
+{
+    if (retryMode)
+    {
         retryMode = false;
-        
-        if (success) {
+
+        if (success)
+        {
             Serial.println("\n~~~~ EXITING RETRY MODE - SUCCESS ~~~~\n");
-        } else {
+        }
+        else
+        {
             Serial.println("\n~~~~ EXITING RETRY MODE ~~~~\n");
         }
-        
+
         board.setColorLED(1, false); // Turn off yellow LED
     }
 }
