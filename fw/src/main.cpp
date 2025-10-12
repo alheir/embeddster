@@ -54,6 +54,12 @@ long retryId = 0;
 #define GROUP_NUMBER 0
 #define NODE_ID (0x100 + GROUP_NUMBER)
 
+// Random send configuration
+#define NUM_RANDOM_STATIONS 4
+#define MIN_DELAY_BETWEEN_SEND_MS 100
+#define MAX_DELAY_BETWEEN_SEND_MS 2000
+#define MAX_DELTA_ANGLE 30
+
 // ============================================================================
 // DECLARACIÓN DE FUNCIONES
 // ============================================================================
@@ -310,14 +316,18 @@ void do_can_sniffer()
 
 void do_can_random_send()
 {
-    static uint32_t lastSendR = 0;
-    static uint32_t lastSendC = 0;
-    static uint32_t lastSendO = 0;
-    static int16_t lastValR = 0;
-    static int16_t lastValC = 0;
-    static int16_t lastValO = 0;
-    static uint32_t lastLedSend = 0;
-    static uint8_t ledTargetGroup = 1;
+    static uint32_t lastSend[NUM_RANDOM_STATIONS][3];  // [station][angle_type: R=0, C=1, O=2]
+    static int16_t lastVal[NUM_RANDOM_STATIONS][3];
+    static bool initialized = false;
+    static uint32_t nextSendTime = 0;
+
+    if (!initialized)
+    {
+        memset(lastSend, 0, sizeof(lastSend));
+        memset(lastVal, 0, sizeof(lastVal));
+        initialized = true;
+        nextSendTime = millis() + random(MIN_DELAY_BETWEEN_SEND_MS, MAX_DELAY_BETWEEN_SEND_MS);
+    }
 
     uint32_t now = millis();
 
@@ -346,59 +356,53 @@ void do_can_random_send()
         return;
     }
 
-    int16_t simR = lastValR + random(-5, 6);
-    int16_t simC = lastValC + random(-5, 6);
-    int16_t simO = lastValO + random(-5, 6);
-    simR = constrain(simR, -180, 180);
-    simC = constrain(simC, -180, 180);
-    simO = constrain(simO, -180, 180);
+    if (now < nextSendTime) return;
 
-    auto sendAngle = [&](char angleId, int16_t val, uint32_t &lastSend, int16_t &lastVal)
+    uint8_t randomStation = random(0, NUM_RANDOM_STATIONS);
+    long canId = 0x100 + randomStation;
+
+    uint8_t angleType = random(0, 3);
+    char angleChars[3] = {'R', 'C', 'O'};
+    char angleId = angleChars[angleType];
+
+    int16_t newVal = lastVal[randomStation][angleType] + random(-MAX_DELTA_ANGLE, MAX_DELTA_ANGLE + 1);
+    newVal = constrain(newVal, -179, 180);
+
+    char buf[8];
+    int len = snprintf(buf, sizeof(buf), "%c%d", angleId, newVal);
+
+    if (CAN.sendMsgBuf(canId, 0, len, (uint8_t *)buf) == CAN_OK)
     {
-        if (abs(val - lastVal) >= 6 || (now - lastSend) >= 2000)
+        Serial.print("SENT ANGLE:");
+        Serial.print(" ID=0x");
+        Serial.print(canId, HEX);
+        Serial.print(" Data=0x");
+        for (int i = 0; i < len; i++)
         {
-            char buf[5];
-            int len = snprintf(buf, sizeof(buf), "%c%d", angleId, val);
-            if (CAN.sendMsgBuf(NODE_ID, 0, len, (uint8_t *)buf) == CAN_OK)
-            {
-                Serial.print("SENT ANGLE: ID=0x");
-                Serial.print(NODE_ID, HEX);
-                Serial.print(" Data=0x");
-                for (int i = 0; i < len; i++)
-                {
-                    Serial.print(buf[i], HEX);
-                }
-                Serial.print("='");
-                Serial.write(buf, len);
-                Serial.print("' Len=");
-                Serial.println(len);
-
-                lastSend = now;
-                lastVal = val;
-
-                digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
-            }
-            else
-            {
-                Serial.print("Error sending CAN msg: ");
-                Serial.write(buf, len);
-                Serial.println();
-                enterRetryMode(NODE_ID, buf, len);
-            }
+            Serial.print(buf[i], HEX);
         }
-    };
+        Serial.print("='");
+        Serial.write(buf, len);
+        Serial.print("' Len=");
+        Serial.println(len);
 
-    sendAngle('R', simR, lastSendR, lastValR);
-    if (retryMode)
-        return; // Stop if we entered retry mode
+        lastSend[randomStation][angleType] = now;
+        lastVal[randomStation][angleType] = newVal;
 
-    sendAngle('C', simC, lastSendC, lastValC);
-    if (retryMode)
-        return;
+        digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
 
-    sendAngle('O', simO, lastSendO, lastValO);
-
-    delay(100); // update rate
+        // Schedule next send with random delay
+        nextSendTime = now + random(MIN_DELAY_BETWEEN_SEND_MS, MAX_DELAY_BETWEEN_SEND_MS);
+    }
+    else
+    {
+        Serial.print("Error sending CAN msg: ID=0x");
+        Serial.print(canId, HEX);
+        Serial.print(" Data=");
+        Serial.write(buf, len);
+        Serial.println();
+        enterRetryMode(canId, buf, len);
+    }
 }
 
 // ============================================================================
