@@ -212,13 +212,30 @@ void loop()
                     data[dataLen++] = strtol(byteStr.c_str(), NULL, 16);
                     pos = next_ + 1;
                 }
+                
+                Serial.print("SEND: ID=0x");
+                Serial.print(can_id, HEX);
+                Serial.print(" Data=0x");
+                for (int i = 0; i < dataLen; i++)
+                {
+                    if (data[i] < 0x10) Serial.print("0");
+                    Serial.print(data[i], HEX);
+                }
+                Serial.print("='");
+                for (int i = 0; i < dataLen; i++)
+                {
+                    Serial.write(data[i]);
+                }
+                Serial.print("' Len=");
+                Serial.print(dataLen);
+                
                 if (CAN.sendMsgBuf(can_id, 0, dataLen, data) == CAN_OK)
                 {
-                    Serial.println("Custom CAN message sent");
+                    Serial.println(" - SUCCESS");
                 }
                 else
                 {
-                    Serial.println("Error sending custom CAN msg");
+                    Serial.println(" - ERROR");
                 }
             }
         }
@@ -240,25 +257,44 @@ void loop()
             {
                 int station = parts[0];
                 int r = parts[1], g = parts[2], b = parts[3];
+                
+                Serial.print("LED CMD: Station=");
+                Serial.print(station);
+                Serial.print(" RGB=(");
+                Serial.print(r);
+                Serial.print(",");
+                Serial.print(g);
+                Serial.print(",");
+                Serial.print(b);
+                Serial.print(")");
+                
                 if (station == GROUP_NUMBER)
                 {
                     // Set own NeoPixel
                     npxl.setPixelColor(0, npxl.Color(r * NPXL_BRIGHTNESS, g * NPXL_BRIGHTNESS, b * NPXL_BRIGHTNESS));
                     npxl.show();
-                    Serial.println("Own LED updated");
+                    Serial.println(" - Own LED updated");
                 }
                 else
                 {
                     // Send remote LED command via CAN, 1JKL 0RGB
                     char ledCmd = 0x80 | ((station << 4) & 0x70) | ((r << 2) & 4) | ((g << 1) & 2) | ((b << 0) & 1);
                     long can_id = 0x100 + GROUP_NUMBER; // sending from own group number
+                    
+                    Serial.print(" ID=0x");
+                    Serial.print(can_id, HEX);
+                    Serial.print(" Data=0x");
+                    if ((uint8_t)ledCmd < 0x10) Serial.print("0");
+                    Serial.print((uint8_t)ledCmd, HEX);
+                    Serial.print(" Len=1");
+                    
                     if (CAN.sendMsgBuf(can_id, 0, 1, (uint8_t *)(&ledCmd)) == CAN_OK)
                     {
-                        Serial.println("LED command sent via CAN");
+                        Serial.println(" - SUCCESS");
                     }
                     else
                     {
-                        Serial.println("Error sending LED CAN msg");
+                        Serial.println(" - ERROR");
                     }
                 }
             }

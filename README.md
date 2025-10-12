@@ -156,7 +156,10 @@ M2
 SEND_105_41_42_43
 
 # Respuesta:
-# Custom CAN message sent
+# SEND: ID=0x105 Data=0x414243='ABC' Len=3 - SUCCESS
+
+# Si falla (e.g., bus desconectado):
+# SEND: ID=0x105 Data=0x414243='ABC' Len=3 - ERROR
 ```
 
 #### 4. Controlar LED RGB de estación remota
@@ -164,10 +167,14 @@ SEND_105_41_42_43
 # Estación 1, LED verde encendido (r=0, g=1, b=0)
 LED_1_0_1_0
 
+# Respuestao:
+# LED CMD: Station=1 RGB=(0,1,0) - LED command sent via CAN
+
 # Si es estación propia (GROUP_NUMBER=0):
-# Own LED updated
-# Si es remota:
-# LED command sent via CAN
+# LED CMD: Station=0 RGB=(1,0,0) - Own LED updated
+
+# Si falla el envío remoto:
+# LED CMD: Station=1 RGB=(0,1,0) - ERROR sending CAN
 ```
 
 #### 5. Cambiar modo CAN a Loopback (para pruebas sin bus)
