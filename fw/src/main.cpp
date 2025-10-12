@@ -19,6 +19,8 @@ TP1BOARD board;
 
 void do_can_sniffer();
 void do_can_random_send();
+void enterRetryMode(long canId, const char* data, int len);
+void exitRetryMode(bool success);
 
 void setup()
 {
@@ -80,7 +82,6 @@ void setup()
 
     Serial.println("Setup complete, starting in CAN SNIFFER mode (Blue)");
     board.setColorLED(2, true); // Blue ON
-    board.refresh();
     Serial.println("\n-->> Send 'M1' to switch to CAN SNIFFER mode, 'M2' to RANDOM SEND mode\n\n");
 }
 
@@ -94,11 +95,21 @@ enum State
 uint8_t currState = STATE_SNIFFER;  // Default to sniffer
 uint8_t nextState = STATE_RANDOM_SEND;
 
-// Add global for LED command handling
-#define GROUP_NUMBER 0  // As defined in original
+
+// Retry mechanism globals
+#define RETRY_INTERVAL_MS 2000
+bool retryMode = false;
+uint32_t lastRetryAttempt = 0;
+char retryBuffer[8];
+int retryLen = 0;
+long retryId = 0;
 
 void do_can_sniffer()
 {
+    if (retryMode) {
+        exitRetryMode(false);
+    }
+    
     if (digitalRead(PIN_MCP_nINT) == LOW)
     {
         long unsigned int rxId;
@@ -147,6 +158,26 @@ void do_can_random_send()
 
     uint32_t now = millis();
 
+    if (retryMode) {
+        if (now - lastRetryAttempt >= RETRY_INTERVAL_MS) {
+            lastRetryAttempt = now;
+            
+            Serial.print("RETRY: Attempting to resend ID=0x");
+            Serial.print(retryId, HEX);
+            Serial.print(" Data='");
+            Serial.write((const uint8_t*)retryBuffer, retryLen);
+            Serial.println("'");
+            
+            if (CAN.sendMsgBuf(retryId, 0, retryLen, (uint8_t*)retryBuffer) == CAN_OK) {
+                exitRetryMode(true);
+                digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+            } else {
+                Serial.println("RETRY: Failed, will retry again...");
+            }
+        }
+        return;
+    }
+
     int16_t simR = lastValR + random(-5, 6);
     int16_t simC = lastValC + random(-5, 6);
     int16_t simO = lastValO + random(-5, 6);
@@ -175,13 +206,20 @@ void do_can_random_send()
 
                 digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
             } else {
-                Serial.println("Error sending CAN msg");
+                Serial.print("Error sending CAN msg: ");
+                Serial.write(buf, len);
+                Serial.println();
+                enterRetryMode(NODE_ID, buf, len);
             }
         }
     };
 
     sendAngle('R', simR, lastSendR, lastValR);
+    if (retryMode) return; // Stop if we entered retry mode
+    
     sendAngle('C', simC, lastSendC, lastValC);
+    if (retryMode) return;
+    
     sendAngle('O', simO, lastSendO, lastValO);
 
     delay(100); // update rate
@@ -189,6 +227,8 @@ void do_can_random_send()
 
 void loop()
 {
+    board.refresh();
+
     switch (currState)
     {
     case STATE_SNIFFER:
@@ -208,7 +248,6 @@ void loop()
 
             board.setColorLED(2, true); // Blue ON
             board.setColorLED(3, false); // Green OFF
-            board.refresh();
 
         } else if (cmd == "M2" && currState != STATE_RANDOM_SEND) {
             Serial.println("\n\n~~~~Setting RANDOM SEND mode (Green)~~~~\n");
@@ -216,7 +255,6 @@ void loop()
 
             board.setColorLED(2, false); // Blue OFF
             board.setColorLED(3, true); // Green ON
-            board.refresh();
 
         } else if (cmd.startsWith("MODE_")) {
             String mode = cmd.substring(5);
@@ -224,12 +262,10 @@ void loop()
                 CAN.setMode(MCP_NORMAL);
                 Serial.println("CAN mode set to NORMAL");
                 board.setColorLED(0, false); // normal mode ON with white LED OFF
-                board.refresh();
             } else if (mode == "LOOPBACK") {
                 CAN.setMode(MCP_LOOPBACK);
                 Serial.println("CAN mode set to LOOPBACK");
                 board.setColorLED(0, true); // loopback mode ON with white LED ON
-                board.refresh();
             }
         } else if (cmd.startsWith("SEND_")) {
             // Parse SEND_{can_id:x}_{byte1:02x}_{byte2:02x}...
@@ -286,5 +322,37 @@ void loop()
                 }
             }
         }
+    }
+}
+
+void enterRetryMode(long canId, const char* data, int len) {
+    if (!retryMode) {
+        retryMode = true;
+        retryId = canId;
+        retryLen = len;
+        memcpy(retryBuffer, data, len);
+        
+        Serial.println("\n~~~~ ENTERING RETRY MODE ~~~~");
+        Serial.print("Failed message: ID=0x");
+        Serial.print(canId, HEX);
+        Serial.print(" Data='");
+        Serial.write((const uint8_t*)data, len);
+        Serial.println("'");
+        
+        board.setColorLED(1, true); // Yellow LED flashing indicates retry
+    }
+}
+
+void exitRetryMode(bool success) {
+    if (retryMode) {
+        retryMode = false;
+        
+        if (success) {
+            Serial.println("\n~~~~ EXITING RETRY MODE - SUCCESS ~~~~\n");
+        } else {
+            Serial.println("\n~~~~ EXITING RETRY MODE ~~~~\n");
+        }
+        
+        board.setColorLED(1, false); // Turn off yellow LED
     }
 }
