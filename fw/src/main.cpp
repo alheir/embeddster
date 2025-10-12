@@ -378,10 +378,7 @@ void do_can_random_send()
     switch (formatStyle)
     {
         case 0: // Simple format: "R-34" or "C0" (no leading sign for positive, no padding)
-            if (newVal >= 0)
-                len = snprintf(buf, sizeof(buf), "%c%d", angleId, newVal);
-            else
-                len = snprintf(buf, sizeof(buf), "%c%d", angleId, newVal);
+            len = snprintf(buf, sizeof(buf), "%c%d", angleId, newVal);
             break;
         case 1: // Explicit sign format: "R+138" (always show sign)
             len = snprintf(buf, sizeof(buf), "%c%+d", angleId, newVal);
