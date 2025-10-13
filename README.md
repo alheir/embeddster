@@ -51,6 +51,8 @@
   - Conecta ESP32 a encoder rotativo, displays 7-segmentos (via shift registers 74HC595), LED RGB (WS2812B), transceiver CAN (MCP2515), LEDs de estado.
   - Compatible con placa TP1 del curso (displays, encoder, LEDs de estado).
 
+![PCB Embeddster - Referencias superiores](docs/pcb_top_references.png)
+
 ### Firmware (ESP32)
 - **Ubicación**: `fw/` (proyecto PlatformIO).
 - **Funcionalidades**:
