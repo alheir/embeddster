@@ -212,13 +212,14 @@ void loop()
                     data[dataLen++] = strtol(byteStr.c_str(), NULL, 16);
                     pos = next_ + 1;
                 }
-                
+
                 Serial.print("SEND: ID=0x");
                 Serial.print(can_id, HEX);
                 Serial.print(" Data=0x");
                 for (int i = 0; i < dataLen; i++)
                 {
-                    if (data[i] < 0x10) Serial.print("0");
+                    if (data[i] < 0x10)
+                        Serial.print("0");
                     Serial.print(data[i], HEX);
                 }
                 Serial.print("='");
@@ -228,7 +229,7 @@ void loop()
                 }
                 Serial.print("' Len=");
                 Serial.print(dataLen);
-                
+
                 if (CAN.sendMsgBuf(can_id, 0, dataLen, data) == CAN_OK)
                 {
                     Serial.println(" - SUCCESS");
@@ -257,7 +258,7 @@ void loop()
             {
                 int station = parts[0];
                 int r = parts[1], g = parts[2], b = parts[3];
-                
+
                 Serial.print("LED CMD: Station=");
                 Serial.print(station);
                 Serial.print(" RGB=(");
@@ -267,7 +268,7 @@ void loop()
                 Serial.print(",");
                 Serial.print(b);
                 Serial.print(")");
-                
+
                 if (station == GROUP_NUMBER)
                 {
                     // Set own NeoPixel
@@ -280,14 +281,15 @@ void loop()
                     // Send remote LED command via CAN, 1JKL 0RGB
                     char ledCmd = 0x80 | ((station << 4) & 0x70) | ((r << 2) & 4) | ((g << 1) & 2) | ((b << 0) & 1);
                     long can_id = 0x100 + GROUP_NUMBER; // sending from own group number
-                    
+
                     Serial.print(" ID=0x");
                     Serial.print(can_id, HEX);
                     Serial.print(" Data=0x");
-                    if ((uint8_t)ledCmd < 0x10) Serial.print("0");
+                    if ((uint8_t)ledCmd < 0x10)
+                        Serial.print("0");
                     Serial.print((uint8_t)ledCmd, HEX);
                     Serial.print(" Len=1");
-                    
+
                     if (CAN.sendMsgBuf(can_id, 0, 1, (uint8_t *)(&ledCmd)) == CAN_OK)
                     {
                         Serial.println(" - SUCCESS");
@@ -375,7 +377,7 @@ void do_can_sniffer()
 
 void do_can_random_send()
 {
-    static uint32_t lastSend[NUM_RANDOM_STATIONS][3];  // [station][angle_type: R=0, C=1, O=2]
+    static uint32_t lastSend[NUM_RANDOM_STATIONS][3]; // [station][angle_type: R=0, C=1, O=2]
     static int16_t lastVal[NUM_RANDOM_STATIONS][3];
     static bool initialized = false;
     static uint32_t nextSendTime = 0;
@@ -415,7 +417,8 @@ void do_can_random_send()
         return;
     }
 
-    if (now < nextSendTime) return;
+    if (now < nextSendTime)
+        return;
 
     uint8_t randomStation = random(0, NUM_RANDOM_STATIONS);
     long canId = 0x100 + randomStation;
@@ -433,36 +436,36 @@ void do_can_random_send()
     char buf[8];
     int formatStyle = random(0, 6);
     int len;
-    
+
     switch (formatStyle)
     {
-        case 0: // Simple format: "R-34" or "C0" (no leading sign for positive, no padding)
-            len = snprintf(buf, sizeof(buf), "%c%d", angleId, newVal);
-            break;
-        case 1: // Explicit sign format: "R+138" (always show sign)
+    case 0: // Simple format: "R-34" or "C0" (no leading sign for positive, no padding)
+        len = snprintf(buf, sizeof(buf), "%c%d", angleId, newVal);
+        break;
+    case 1: // Explicit sign format: "R+138" (always show sign)
+        len = snprintf(buf, sizeof(buf), "%c%+d", angleId, newVal);
+        break;
+    case 2: // Zero-padded 2 digits: "R00" or "C-07"
+        if (newVal >= 0)
+            len = snprintf(buf, sizeof(buf), "%c%02d", angleId, newVal);
+        else
+            len = snprintf(buf, sizeof(buf), "%c%03d", angleId, newVal); // -XX format
+        break;
+    case 3: // Zero-padded 3 digits: "O000" or "C-072"
+        if (newVal >= 0)
+            len = snprintf(buf, sizeof(buf), "%c%03d", angleId, newVal);
+        else
+            len = snprintf(buf, sizeof(buf), "%c%04d", angleId, newVal); // -XXX format
+        break;
+    case 4: // Explicit positive sign with padding: "R+107"
+        len = snprintf(buf, sizeof(buf), "%c%+03d", angleId, newVal);
+        break;
+    default: // Mix: sometimes simple, sometimes with sign
+        if (newVal >= 0 && random(0, 2) == 0)
             len = snprintf(buf, sizeof(buf), "%c%+d", angleId, newVal);
-            break;
-        case 2: // Zero-padded 2 digits: "R00" or "C-07"
-            if (newVal >= 0)
-                len = snprintf(buf, sizeof(buf), "%c%02d", angleId, newVal);
-            else
-                len = snprintf(buf, sizeof(buf), "%c%03d", angleId, newVal); // -XX format
-            break;
-        case 3: // Zero-padded 3 digits: "O000" or "C-072"
-            if (newVal >= 0)
-                len = snprintf(buf, sizeof(buf), "%c%03d", angleId, newVal);
-            else
-                len = snprintf(buf, sizeof(buf), "%c%04d", angleId, newVal); // -XXX format
-            break;
-        case 4: // Explicit positive sign with padding: "R+107"
-            len = snprintf(buf, sizeof(buf), "%c%+03d", angleId, newVal);
-            break;
-        default: // Mix: sometimes simple, sometimes with sign
-            if (newVal >= 0 && random(0, 2) == 0)
-                len = snprintf(buf, sizeof(buf), "%c%+d", angleId, newVal);
-            else
-                len = snprintf(buf, sizeof(buf), "%c%d", angleId, newVal);
-            break;
+        else
+            len = snprintf(buf, sizeof(buf), "%c%d", angleId, newVal);
+        break;
     }
 
     if (CAN.sendMsgBuf(canId, 0, len, (uint8_t *)buf) == CAN_OK)
