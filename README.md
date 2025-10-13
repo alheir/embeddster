@@ -1,5 +1,7 @@
 # Embeddster: Plataforma de Pruebas para Sistemas Embebidos
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/alheir/embeddster)
+
 - [Embeddster: Plataforma de Pruebas para Sistemas Embebidos](#embeddster-plataforma-de-pruebas-para-sistemas-embebidos)
   - [Descripción General](#descripción-general)
     - [¿Qué Hace Embeddster?](#qué-hace-embeddster)
