@@ -337,6 +337,29 @@ void do_can_sniffer()
             Serial.print(len);
             Serial.println();
 
+            // Check if it's an LED command (bit 7 set, length 1)
+            if (len == 1 && (rxBuf[0] & 0x80))
+            {
+                uint8_t ledCmd = rxBuf[0];
+                uint8_t targetStation = (ledCmd >> 4) & 0x07; // JKL bits (3 bits)
+                uint8_t r = (ledCmd >> 2) & 0x01;
+                uint8_t g = (ledCmd >> 1) & 0x01;
+                uint8_t b = (ledCmd >> 0) & 0x01;
+
+                if (targetStation == GROUP_NUMBER)
+                {
+                    npxl.setPixelColor(0, npxl.Color(r * NPXL_BRIGHTNESS, g * NPXL_BRIGHTNESS, b * NPXL_BRIGHTNESS));
+                    npxl.show();
+                    Serial.print("LED CMD APPLIED: RGB=(");
+                    Serial.print(r);
+                    Serial.print(",");
+                    Serial.print(g);
+                    Serial.print(",");
+                    Serial.print(b);
+                    Serial.println(")");
+                }
+            }
+
             digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
         }
         else
