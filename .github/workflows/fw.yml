@@ -1,0 +1,38 @@
+name: Firmware
+
+on:
+  pull_request:
+    paths:
+      - "fw/**"
+      - ".github/workflows/fw.yml"
+  push:
+    branches: [main]
+    paths:
+      - "fw/**"
+      - ".github/workflows/fw.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.platformio
+          key: ${{ runner.os }}-pio-${{ hashFiles('fw/platformio.ini') }}
+          restore-keys: |
+            ${{ runner.os }}-pio-
+
+      - name: Install PlatformIO
+        run: pip install --upgrade platformio
+
+      - name: Build
+        working-directory: fw
+        run: pio run
