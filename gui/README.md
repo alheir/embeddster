@@ -5,33 +5,57 @@ Esta es una herramienta de apoyo para el curso 25.27 – Sistemas Embebidos del 
 
 ## Getting started
 
-En el directorio el proyecto, crear entorno virtual
+Requiere **Python 3.11 o 3.12** (ver `.python-version`).
+
+### Con uv (recomendado)
+
+Desde el directorio `gui/`:
 
 ```bash
-python -m venv venv
+uv sync
+uv run python main.py
+```
+
+Para instalar también herramientas de desarrollo (ruff):
+
+```bash
+uv sync --group dev
+```
+
+### Sin uv (alternativa)
+
+```bash
+python -m venv .venv
 ```
 
 Activar el entorno virtual:
 
 - En Windows:
     ```bash
-    venv\Scripts\activate
+    .venv\Scripts\activate
     ```
 - En Linux/Mac:
     ```bash
-    source venv/bin/activate
+    source .venv/bin/activate
     ```
 
-Instalar dependencias
+Instalar dependencias:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Ejecutar la aplicación
+Ejecutar la aplicación:
 
 ```bash
 python main.py
+```
+
+### Desarrollo
+
+```bash
+uv run ruff check .
+uv run ruff format .
 ```
 
 ![alt text](docs/tool_overview.png)
