@@ -1,0 +1,5 @@
+# Experimental web GUI (feat/web-gui branch)
+/web/
+
+# KiCad local editor history
+/hw/kicad/.history/
