@@ -3,17 +3,7 @@ from OpenGL.GL import *
 
 
 def loadMesh(filename: str) -> list[float]:
-    """
-    Load a mesh from an obj file.
-
-    Parameters:
-
-        filename: the filename.
-
-    Returns:
-
-        The loaded data, in a flattened format.
-    """
+    """Load an OBJ file into a flat vertex list (position, uv, normal)."""
 
     v = []
     vt = []
@@ -45,26 +35,14 @@ def loadMesh(filename: str) -> list[float]:
 
 
 def read_vertex_data(words: list[str]) -> list[float]:
-    """
-    Returns a vertex description.
-    """
-
     return [float(words[1]), float(words[2]), float(words[3])]
 
 
 def read_texcoord_data(words: list[str]) -> list[float]:
-    """
-    Returns a texture coordinate description.
-    """
-
     return [float(words[1]), float(words[2])]
 
 
 def read_normal_data(words: list[str]) -> list[float]:
-    """
-    Returns a normal vector description.
-    """
-
     return [float(words[1]), float(words[2]), float(words[3])]
 
 
@@ -75,9 +53,7 @@ def read_face_data(
     vn: list[list[float]],
     vertices: list[float],
 ) -> None:
-    """
-    Reads an edgetable and makes a face from it.
-    """
+    """Triangulate one OBJ face into the vertex list."""
 
     triangleCount = len(words) - 3
 
@@ -94,9 +70,7 @@ def make_corner(
     vn: list[list[float]],
     vertices: list[float],
 ) -> None:
-    """
-    Composes a flattened description of a vertex.
-    """
+    """Append one corner: position, uv, normal."""
 
     v_vt_vn = corner_description.split("/")
 
@@ -109,14 +83,9 @@ def make_corner(
 
 
 class Mesh:
-    """
-    A mesh that can represent an obj model.
-    """
+    """OBJ mesh ready to draw."""
 
     def __init__(self, filename: str):
-        """
-        Initialize the mesh.
-        """
 
         # x, y, z, s, t, nx, ny, nz
         vertices = loadMesh(filename)
@@ -138,22 +107,15 @@ class Mesh:
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 32, ctypes.c_void_p(12))
 
     def arm_for_drawing(self) -> None:
-        """
-        Arm the triangle for drawing.
-        """
+        """Bind the vertex array."""
         glBindVertexArray(self.vao)
 
     def draw(self) -> None:
-        """
-        Draw the triangle.
-        """
 
         glDrawArrays(GL_TRIANGLES, 0, self.vertex_count)
 
     def destroy(self) -> None:
-        """
-        Free any allocated memory.
-        """
+        """Delete the GL buffers."""
 
         glDeleteVertexArrays(1, (self.vao,))
         glDeleteBuffers(1, (self.vbo,))

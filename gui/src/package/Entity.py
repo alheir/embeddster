@@ -3,36 +3,18 @@ import pyrr
 
 
 class Entity:
-    """
-    A basic object in the world, with a position and rotation.
-    """
+    """Position and euler angles, in degrees."""
 
     def __init__(self, position: list[float], eulers: list[float]):
-        """
-        Initialize the entity.
-
-        Parameters:
-
-            position: the position of the entity.
-
-            eulers: the rotation of the entity
-                    about each axis.
-        """
 
         self.position = np.array(position, dtype=np.float32)
         self.eulers = np.array(eulers, dtype=np.float32)
 
     def update(self) -> None:
-        """
-        Update the object, this is hard coded for now.
-        """
         pass
 
     def get_model_transform(self) -> np.ndarray:
-        """
-        Returns the entity's model to world
-        transformation matrix.
-        """
+        """Model matrix for this entity."""
 
         # model_transform = pyrr.matrix44.create_identity(dtype=np.float32)
 

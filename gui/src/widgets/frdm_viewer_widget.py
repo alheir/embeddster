@@ -8,32 +8,27 @@ from src.package.Entity import Entity
 from src.package.Material import Material
 from src.package.Mesh import Mesh
 from src.package.OpenGLUtils import create_shader
-from src.package.Station import STATION_COUNT
+from src.package.Station import DEFAULT_GROUP_COUNT, MAX_GROUP_COUNT
+
+# Original fixed layout. Model size stays at this framing; other counts are recentered.
+FRAME_GROUPS = DEFAULT_GROUP_COUNT
 
 
 class FrdmViewerWidget(QOpenGLWidget):
-    """
-    For now, the app will be handling everything.
-    Later on we'll break it into subcomponents.
-    """
-
     def __init__(self, parent=None):
         super().__init__()
         self.base_dir = os.path.dirname(__file__)
+        self.group_count = DEFAULT_GROUP_COUNT
         self.stations = []
         self.stations_mesh = []
-        self.stations_active = [False] * STATION_COUNT
+        self.stations_active = [False] * MAX_GROUP_COUNT
         self.modelIndex = 0
         self.theme = "light"
+        self._gl_ready = False
 
     def initializeGL(self) -> None:
-        """
-        Configure any desired OpenGL options
-        """
-        for x in range(STATION_COUNT):
-            self.stations.append(
-                Entity(position=[-STATION_COUNT * 100 / 2 + 100 * x, 0, -100], eulers=[0, 0, 90])
-            )
+        for _ in range(MAX_GROUP_COUNT):
+            self.stations.append(Entity(position=[0, 0, -100], eulers=[0, 0, 90]))
             self.stations_mesh.append(
                 [
                     Mesh(os.path.join(self.base_dir, "..", "models", "frdm.obj")),
@@ -58,28 +53,17 @@ class FrdmViewerWidget(QOpenGLWidget):
 
         glUseProgram(self.shader)
         glUniform1i(glGetUniformLocation(self.shader, "imageTexture"), 0)
-
-        projection_transform = pyrr.matrix44.create_orthogonal_projection(
-            left=-STATION_COUNT * 100 / 2 - 50,
-            right=STATION_COUNT * 100 / 2 - 50,
-            top=100,
-            bottom=-100,
-            near=1,
-            far=1000,
-            dtype=np.float32,
-        )
-        glUniformMatrix4fv(
-            glGetUniformLocation(self.shader, "projection"), 1, GL_FALSE, projection_transform
-        )
-        glUseProgram(self.shader)
+        self._layout_stations()
+        self._apply_projection()
         self.modelMatrixLocation = glGetUniformLocation(self.shader, "model")
         glEnable(GL_TEXTURE_2D)
         glEnable(GL_DEPTH_TEST)
         glEnable(GL_CULL_FACE)
         glCullFace(GL_BACK)
+        self._gl_ready = True
 
     def paintGL(self):
-        for x in range(STATION_COUNT):
+        for x in range(self.group_count):
             self.stations[x].update()
 
         if self.theme == "dark":
@@ -90,7 +74,7 @@ class FrdmViewerWidget(QOpenGLWidget):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glUseProgram(self.shader)
 
-        for x in range(STATION_COUNT):
+        for x in range(self.group_count):
             if self.stations_active[x]:
                 self.enabled_texture[self.modelIndex].use()
             else:
@@ -101,12 +85,49 @@ class FrdmViewerWidget(QOpenGLWidget):
             self.stations_mesh[x][self.modelIndex].arm_for_drawing()
             self.stations_mesh[x][self.modelIndex].draw()
 
+    def set_group_count(self, count: int) -> None:
+        self.group_count = count
+        if not self._gl_ready:
+            return
+        for station in self.stations:
+            station.eulers = np.array([0, 0, 90], dtype=np.float32)
+        self.stations_active = [False] * len(self.stations)
+        self._layout_stations()
+        self.update()
+
+    def _layout_stations(self) -> None:
+        n = max(self.group_count, 1)
+        center = -50.0
+        origin = center - (n - 1) * 50.0
+        for x, station in enumerate(self.stations):
+            station.position = np.array([origin + 100 * x, 0, -100], dtype=np.float32)
+            if x >= self.group_count:
+                self.stations_active[x] = False
+
+    def _apply_projection(self) -> None:
+        n = FRAME_GROUPS
+        projection = pyrr.matrix44.create_orthogonal_projection(
+            left=-n * 100 / 2 - 50,
+            right=n * 100 / 2 - 50,
+            top=100,
+            bottom=-100,
+            near=1,
+            far=1000,
+            dtype=np.float32,
+        )
+        glUseProgram(self.shader)
+        glUniformMatrix4fv(glGetUniformLocation(self.shader, "projection"), 1, GL_FALSE, projection)
+
     def setOrientation(self, index, x, y, z):
+        if not self.stations or index < 0 or index >= self.group_count:
+            return
         self.stations[index].eulers = [x, y, z]
         self.stations_active[index] = True
         self.update()
 
     def setStationInactive(self, index):
+        if not self.stations or index < 0 or index >= self.group_count:
+            return
         self.stations_active[index] = False
         self.update()
 
@@ -116,13 +137,13 @@ class FrdmViewerWidget(QOpenGLWidget):
 
     def setTheme(self, theme):
         self.theme = theme
-        self.update()  # Solo actualiza, no llames glClearColor
+        self.update()
 
     def quit(self) -> None:
-        """cleanup the app, run exit code"""
-
-        for x in range(STATION_COUNT):
-            for mesh in self.stations_mesh[x]:
+        if not self._gl_ready:
+            return
+        for meshes in self.stations_mesh:
+            for mesh in meshes:
                 mesh.destroy()
         for material in self.enabled_texture:
             material.destroy()

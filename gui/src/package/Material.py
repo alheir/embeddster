@@ -3,18 +3,9 @@ from PyQt6.QtGui import QImage
 
 
 class Material:
-    """
-    A basic texture.
-    """
+    """OpenGL texture loaded from an image file."""
 
     def __init__(self, filepath: str):
-        """
-        Initialize and load the texture.
-
-        Parameters:
-
-            filepath: path to the image file.
-        """
 
         self.texture = glGenTextures(1)
         glBindTexture(GL_TEXTURE_2D, self.texture)
@@ -48,9 +39,7 @@ class Material:
         glGenerateMipmap(GL_TEXTURE_2D)
 
     def use(self) -> None:
-        """
-        Arm the texture for drawing.
-        """
+        """Bind this texture."""
 
         glActiveTexture(GL_TEXTURE0)
         glBindTexture(GL_TEXTURE_2D, self.texture)
@@ -58,8 +47,6 @@ class Material:
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
     def destroy(self) -> None:
-        """
-        Free the texture.
-        """
+        """Delete the GL texture."""
 
         glDeleteTextures(1, (self.texture,))

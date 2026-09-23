@@ -24,7 +24,7 @@
   - [Uso con GUI (Python)](#uso-con-gui-python)
     - [Instalación y Configuración](#instalación-y-configuración)
     - [Modo Normal](#modo-normal)
-    - [God Mode (Modo Avanzado)](#god-mode-modo-avanzado)
+    - [CAN console](#can-console)
   - [Estructura del Proyecto](#estructura-del-proyecto)
   - [Protocolo de Comunicación](#protocolo-de-comunicación)
     - [Mensajes CAN (Formato)](#mensajes-can-formato)
@@ -42,7 +42,7 @@
 ### ¿Qué Hace Embeddster?
 - **Hardware**: PCB personalizada que conecta un ESP32 a los periféricos de los TPs (encoder, displays 7-segmentos, LEDs, bus CAN).
 - **Firmware**: Gestiona la comunicación serie con PC, controla LEDs de estado, maneja mensajes CAN (sniffer/envío) y soporta reintentos automáticos en caso de errores de bus.
-- **GUI**: Aplicación Python con visualización 3D de estaciones, monitoreo de mensajes CAN, control de LEDs RGB y modo avanzado "God Mode" para debugging.
+- **GUI**: Aplicación Python con visualización 3D de estaciones, monitoreo de mensajes CAN, control de LEDs RGB y una CAN console para ver e inyectar tráfico.
   
 ---
 
@@ -68,7 +68,7 @@
 - **Funcionalidades**:
   - **Visualización 3D**: Modelos de estaciones con orientación en tiempo real (roll/pitch/yaw).
   - **Control de LEDs**: Envío de comandos RGB a estaciones específicas.
-  - **God Mode**: Ventana avanzada para monitoreo CAN, inyección de mensajes, filtros por ID, logs y export.
+  - **CAN console**: Monitoreo CAN, inyección de mensajes, filtros por ID, logs y export.
   - **Soporte TP2**: Extensión de [TiltNetworkTool](https://github.com/alheir/TiltNetworkTool), basado en [canmon](https://github.com/alheir/canmon).
 
 ## Uso sin GUI (Solo PCB + Terminal Serial)
@@ -260,11 +260,11 @@ uv run python main.py
 3. Los mensajes CAN se procesarán automáticamente (via [`ProtocolHandler`](gui/src/protocol/protocol_handler.py)).
 4. Para enviar LED: Selecciona estación, marca colores (R/G/B) y haz clic en "Send LED Command".
 
-### God Mode (Modo Avanzado)
+### CAN console
 
-![God Mode - Monitoreo y control CAN](docs/gui_god_mode.png)
+![CAN console](docs/gui_god_mode.png)
 
-**Acceso**: Menú "Actions" → "God Mode" (requiere conexión real, no emulador).
+**Acceso**: Menú "Actions" → "CAN console" (requiere conexión real, no emulador).
 
 **Características**:
 - **Control de modos CAN**: Cambiar entre Normal y Loopback directamente desde la interfaz.
@@ -279,14 +279,14 @@ uv run python main.py
 - **Tabla de estaciones**: Estado de última recepción de Roll/Pitch/Yaw con timestamps.
 
 **Comportamiento especial**:
-- Al abrir God Mode, el ESP32 se pone automáticamente en **modo Sniffer (M1)**.
-- Al cerrar God Mode o la aplicación, el ESP32 se resetea a **modo Normal y Sniffer**.
+- Al abrir la CAN console, el ESP32 se pone automáticamente en **modo Sniffer (M1)**.
+- Al cerrar la CAN console o la aplicación, el ESP32 se resetea a **modo Normal y Sniffer**.
 
 **Ejemplo de uso**:
-1. Abre God Mode desde el menú.
-2. Para inyectar mensaje: Selecciona "Angle Message", elige grupos (checkboxes), tipo (R/C/O), valor y haz clic en "Send".
-3. Para modo Loopback: Haz clic en "🔄 Loopback Mode". El LED blanco en la placa se encenderá.
-4. Para filtrar: Marca "Filter IDs", ingresa IDs separados por coma (e.g., `0x100,0x101`).
+1. Abre CAN console desde el menú.
+2. Para inyectar un ángulo: modo "Angle", grupos, tipo, valor, "Send".
+3. Para modo Loopback: Haz clic en "Loopback". El LED blanco en la placa se encenderá.
+4. Para filtrar: marca "Filter" e ingresa IDs separados por coma (`0x100, 0x101`).
 
 ---
 
@@ -303,7 +303,7 @@ embeddster/
 │   ├── src/
 │   │   ├── mainwindow.py  # Ventana principal
 │   │   ├── protocol/      # ProtocolHandler para parseo de mensajes
-│   │   └── widgets/       # God Mode, plots, visualizador 3D
+│   │   └── widgets/       # CAN console, plots, visualizador 3D
 │   ├── pyproject.toml     # Dependencias y config (uv/ruff)
 │   ├── uv.lock            # Versiones fijadas (uv)
 │   └── requirements.txt   # Export para pip (generado)

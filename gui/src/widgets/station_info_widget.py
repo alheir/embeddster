@@ -23,7 +23,7 @@ class StationInfoWidget(QtWidgets.QWidget):
         self.groupBox.layout().addWidget(self.labelPitchValue, 1, 1)
         self.groupBox.layout().addWidget(self.labelYawValue, 2, 1)
 
-        self.labelLastUpdate = QtWidgets.QLabel(text="Last Update: N/A")
+        self.labelLastUpdate = QtWidgets.QLabel(text="Updated: n/a")
         self.groupBox.layout().addWidget(self.labelLastUpdate, 3, 0, 1, 2)
 
         self.plotButton = QtWidgets.QPushButton("Plot")
@@ -71,11 +71,6 @@ class StationInfoWidget(QtWidgets.QWidget):
     def setName(self, name):
         self.groupBox.setTitle(name)
 
-    def setAngleLabels(self, roll, pitch, yaw):
-        self.labelRollValue.setText(f"{int(round(roll))}°")
-        self.labelPitchValue.setText(f"{int(round(pitch))}°")
-        self.labelYawValue.setText(f"{int(round(yaw))}°")
-
     def setAngleLabels(self, angles):
         self.labelRollValue.setText(f"{int(round(angles[0]))}°")
         self.labelPitchValue.setText(f"{int(round(angles[1]))}°")
@@ -86,12 +81,12 @@ class StationInfoWidget(QtWidgets.QWidget):
 
     def setLastUpdateTime(self, seconds_ago):
         if seconds_ago is None:
-            self.labelLastUpdate.setText("Last Update: N/A")
+            self.labelLastUpdate.setText("Updated: n/a")
         elif seconds_ago < 60:
-            self.labelLastUpdate.setText(f"Last Update: {int(seconds_ago)} s")
+            self.labelLastUpdate.setText(f"Updated: {int(seconds_ago)} s")
         else:
             minutes = int(seconds_ago // 60)
-            self.labelLastUpdate.setText(f"Last Update: {minutes} m")
+            self.labelLastUpdate.setText(f"Updated: {minutes} m")
 
     def update_led(self, r, g, b):
         r_color = "rgb(255, 0, 0)" if r else "rgb(32, 32, 32)"

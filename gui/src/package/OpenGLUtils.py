@@ -3,21 +3,7 @@ from OpenGL.GL.shaders import compileProgram, compileShader
 
 
 def create_shader(vertex_filepath: str, fragment_filepath: str) -> int:
-    """
-    Compile and link shader modules to make a shader program.
-
-    Parameters:
-
-        vertex_filepath: path to the text file storing the vertex
-                        source code
-
-        fragment_filepath: path to the text file storing the
-                            fragment source code
-
-    Returns:
-
-        A handle to the created shader program
-    """
+    """Compile a shader program from the vertex and fragment source files."""
 
     with open(vertex_filepath) as f:
         vertex_src = f.readlines()
