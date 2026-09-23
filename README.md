@@ -8,7 +8,7 @@
   - [Características Principales](#características-principales)
     - [Hardware](#hardware)
     - [Firmware (ESP32)](#firmware-esp32)
-    - [GUI (Python)](#gui-python)
+    - [GUI (Web)](#gui-web)
   - [Uso sin GUI (Solo PCB + Terminal Serial)](#uso-sin-gui-solo-pcb--terminal-serial)
     - [Comandos Disponibles](#comandos-disponibles)
     - [Mensajes Recibidos (Formato Serial)](#mensajes-recibidos-formato-serial)
@@ -21,10 +21,13 @@
       - [5. Cambiar modo CAN a Loopback (para pruebas sin bus)](#5-cambiar-modo-can-a-loopback-para-pruebas-sin-bus)
       - [6. Volver a modo Normal](#6-volver-a-modo-normal)
     - [Notas Importantes](#notas-importantes)
-  - [Uso con GUI (Python)](#uso-con-gui-python)
-    - [Instalación y Configuración](#instalación-y-configuración)
-    - [Modo Normal](#modo-normal)
-    - [God Mode (Modo Avanzado)](#god-mode-modo-avanzado)
+  - [Uso con GUI (Web)](#uso-con-gui-web)
+    - [Requisitos](#requisitos)
+    - [Cómo usar](#cómo-usar)
+    - [Pestañas](#pestañas)
+    - [Desarrollo local (mantenedores)](#desarrollo-local-mantenedores)
+    - [Debug del protocolo sin la GUI](#debug-del-protocolo-sin-la-gui)
+    - [God Mode](#god-mode)
   - [Estructura del Proyecto](#estructura-del-proyecto)
   - [Protocolo de Comunicación](#protocolo-de-comunicación)
     - [Mensajes CAN (Formato)](#mensajes-can-formato)
@@ -42,7 +45,7 @@
 ### ¿Qué Hace Embeddster?
 - **Hardware**: PCB personalizada que conecta un ESP32 a los periféricos de los TPs (encoder, displays 7-segmentos, LEDs, bus CAN).
 - **Firmware**: Gestiona la comunicación serie con PC, controla LEDs de estado, maneja mensajes CAN (sniffer/envío) y soporta reintentos automáticos en caso de errores de bus.
-- **GUI**: Aplicación Python con visualización 3D de estaciones, monitoreo de mensajes CAN, control de LEDs RGB y modo avanzado "God Mode" para debugging.
+- **GUI**: Aplicación web (React + Three.js) con visualización 3D, editor de protocolo Python en el navegador, Web Serial, y God Mode para debugging CAN.
   
 ---
 
@@ -63,13 +66,14 @@
   - **Reintentos automáticos**: Si falla el envío de un mensaje CAN (por error de bus), entra en "Retry Mode" (LED amarillo encendido) e intenta reenviarlo cada 2 segundos.
   - **Indicadores visuales**: LEDs de colores para estado del sistema (azul=sniffer, verde=random send, amarillo=retry, blanco=loopback).
 
-### GUI (Python)
-- **Ubicación**: `gui/` (PyQt6, OpenGL, Matplotlib).
+### GUI (Web)
+- **Ubicación**: `web/` (React, Three.js, Pyodide).
 - **Funcionalidades**:
   - **Visualización 3D**: Modelos de estaciones con orientación en tiempo real (roll/pitch/yaw).
-  - **Control de LEDs**: Envío de comandos RGB a estaciones específicas.
-  - **God Mode**: Ventana avanzada para monitoreo CAN, inyección de mensajes, filtros por ID, logs y export.
-  - **Soporte TP2**: Extensión de [TiltNetworkTool](https://github.com/alheir/TiltNetworkTool), basado en [canmon](https://github.com/alheir/canmon).
+  - **Protocolo en Python**: Los grupos editan `ProtocolHandler` en el navegador (Pyodide).
+  - **Web Serial**: Conexión USB desde Chrome o Edge, sin instalar Python para la GUI.
+  - **God Mode**: Monitoreo CAN, inyección, loopback, tráfico aleatorio, filtros y export.
+  - **Basado en**: [TiltNetworkTool](https://github.com/alheir/TiltNetworkTool) y [canmon](https://github.com/alheir/canmon).
 
 ## Uso sin GUI (Solo PCB + Terminal Serial)
 
@@ -206,87 +210,57 @@ MODE_NORMAL
 
 ---
 
-## Uso con GUI (Python)
+## Uso con GUI (Web)
 
-La GUI proporciona una interfaz visual para interactuar con las estaciones CAN, monitorear mensajes en tiempo real y controlar LEDs.
+La GUI corre en el navegador. Los grupos no instalan Python ni dependencias de escritorio para usarla.
 
-### Instalación y Configuración
+### Requisitos
 
-Requiere **Python 3.11 o 3.12**.
+- **Chrome o Edge** (Web Serial API)
+- Cable USB a la placa Embeddster
+- URL de la app (hosteada o `localhost` en desarrollo)
 
-**Con uv (recomendado):**
+### Cómo usar
+
+1. Abrí la GUI en Chrome o Edge.
+2. En la pestaña **Protocol**, implementá `on_bytes` y `build_led_command` en Python.
+3. Conectá la placa con **Connect** (el navegador pide permiso al puerto serie).
+4. Los mensajes se parsean en el navegador vía Pyodide y actualizan el visor 3D.
+
+### Pestañas
+
+| Pestaña | Uso |
+|---------|-----|
+| **Main** | Visor 3D, conexión serial, LEDs, inyector de bytes, gráficos |
+| **God Mode** | Sniffer CAN, inyección manual, loopback, tráfico aleatorio |
+| **Protocol** | Editor Python del handler, carga/descarga de `.py` |
+
+### Desarrollo local (mantenedores)
 
 ```bash
-cd gui
-uv sync
-uv run python main.py
+cd web
+npm install
+npm run dev
 ```
 
-**Sin uv (alternativa):**
+Ver [`web/README.md`](web/README.md) para build y deploy.
 
-1. Crear entorno virtual en `gui/`:
-   ```bash
-   cd gui
-   python -m venv .venv
-   ```
+### Debug del protocolo sin la GUI
 
-2. Activar el entorno virtual:
-   - Windows: `.venv\Scripts\activate`
-   - Linux/Mac: `source .venv/bin/activate`
+Descargá tu `protocol_handler.py` y probalo con el harness de stdlib:
 
-3. Instalar dependencias:
-   ```bash
-   pip install -r requirements.txt
-   ```
+```bash
+python tools/protocol_harness.py protocol_handler.py --ascii "RXED: ID=0x100 ..."
+```
 
-4. Ejecutar la aplicación:
-   ```bash
-   python main.py
-   ```
+Ahí podés usar breakpoints en tu IDE. La placa se sigue probando desde el navegador.
 
-### Modo Normal
+### God Mode
 
-![Ventana principal de la GUI](docs/gui_main.png)
-
-**Características**:
-- **Visualización 3D**: Modelos de estaciones (FRDM-K64F o avión) con orientación en tiempo real basada en mensajes CAN (Roll/Pitch/Yaw).
-- **Panel de estaciones**: Muestra últimos valores de ángulos, tiempo desde última actualización y botón para gráficos históricos.
-- **Control de LEDs**: Selecciona estación y colores RGB para enviar comandos LED via CAN.
-- **Emulador**: Modo simulación sin hardware real (opción "Serial Data Emulator" en selector de puertos).
-
-**Cómo usar**:
-1. Conecta el ESP32 por USB.
-2. Selecciona el puerto COM en la GUI y haz clic en "Connect".
-3. Los mensajes CAN se procesarán automáticamente (via [`ProtocolHandler`](gui/src/protocol/protocol_handler.py)).
-4. Para enviar LED: Selecciona estación, marca colores (R/G/B) y haz clic en "Send LED Command".
-
-### God Mode (Modo Avanzado)
-
-![God Mode - Monitoreo y control CAN](docs/gui_god_mode.png)
-
-**Acceso**: Menú "Actions" → "God Mode" (requiere conexión real, no emulador).
-
-**Características**:
-- **Control de modos CAN**: Cambiar entre Normal y Loopback directamente desde la interfaz.
-- **Monitoreo CAN**: Tabla con timestamp, ID, DLC, tipo (Angle/LED/Unknown), datos en hex y ASCII/binario.
-- **Inyección de mensajes**:
-  - **Manual**: Enviar mensajes CAN con ID y datos personalizados (hex o ASCII).
-  - **Angle Message**: Enviar ángulos a múltiples grupos simultáneamente (selección con checkboxes).
-  - **LED Command**: Controlar LEDs RGB de estaciones remotas.
-  - **Random Traffic**: Generar tráfico CAN aleatorio con modos configurables por grupo (Sine/Const/Noise).
-- **Filtros**: Filtrar mensajes por IDs específicos.
-- **Logs detallados**: Panel inferior con historial de mensajes (exportable a TXT).
-- **Tabla de estaciones**: Estado de última recepción de Roll/Pitch/Yaw con timestamps.
-
-**Comportamiento especial**:
-- Al abrir God Mode, el ESP32 se pone automáticamente en **modo Sniffer (M1)**.
-- Al cerrar God Mode o la aplicación, el ESP32 se resetea a **modo Normal y Sniffer**.
-
-**Ejemplo de uso**:
-1. Abre God Mode desde el menú.
-2. Para inyectar mensaje: Selecciona "Angle Message", elige grupos (checkboxes), tipo (R/C/O), valor y haz clic en "Send".
-3. Para modo Loopback: Haz clic en "🔄 Loopback Mode". El LED blanco en la placa se encenderá.
-4. Para filtrar: Marca "Filter IDs", ingresa IDs separados por coma (e.g., `0x100,0x101`).
+- Al abrir God Mode se envía `M1` (sniffer).
+- Al cerrar la pestaña se envía `MODE_NORMAL` y `M1`.
+- Inyección CAN usa comandos `SEND_...` del firmware ESP32.
+- Los comandos LED en God Mode pasan por `build_led_command` del grupo.
 
 ---
 
@@ -298,15 +272,11 @@ embeddster/
 │   ├── src/main.cpp       # Lógica principal (sniffer, random send, retry)
 │   ├── include/           # Headers (pin_assignment, tp1board, sr595)
 │   └── platformio.ini     # Configuración de compilación
-├── gui/                   # GUI Python (PyQt6)
-│   ├── main.py            # Punto de entrada
-│   ├── src/
-│   │   ├── mainwindow.py  # Ventana principal
-│   │   ├── protocol/      # ProtocolHandler para parseo de mensajes
-│   │   └── widgets/       # God Mode, plots, visualizador 3D
-│   ├── pyproject.toml     # Dependencias y config (uv/ruff)
-│   ├── uv.lock            # Versiones fijadas (uv)
-│   └── requirements.txt   # Export para pip (generado)
+├── web/                   # GUI web (React + Three.js + Pyodide)
+│   ├── src/               # Componentes, worker Pyodide, editor de protocolo
+│   └── public/models/     # Modelos 3D (.obj)
+├── tools/
+│   └── protocol_harness.py  # Test local del ProtocolHandler (stdlib)
 ├── hw/                    # Diseño PCB (KiCad)
 │   └── kicad/             # Esquemáticos y layout
 ├── docs/                  # Imágenes para README
