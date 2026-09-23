@@ -6,7 +6,6 @@ on:
       - "gui/**"
       - ".github/workflows/gui.yml"
   push:
-    branches: [main]
     paths:
       - "gui/**"
       - ".github/workflows/gui.yml"
