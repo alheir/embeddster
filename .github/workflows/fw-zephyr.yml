@@ -1,10 +1,6 @@
 name: Firmware (Zephyr)
 
 on:
-  pull_request:
-    paths:
-      - "fw-zephyr/**"
-      - ".github/workflows/fw-zephyr.yml"
   push:
     paths:
       - "fw-zephyr/**"

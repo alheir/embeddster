@@ -1,10 +1,6 @@
 name: GUI
 
 on:
-  pull_request:
-    paths:
-      - "gui/**"
-      - ".github/workflows/gui.yml"
   push:
     paths:
       - "gui/**"
