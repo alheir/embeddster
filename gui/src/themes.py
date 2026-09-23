@@ -55,14 +55,18 @@ QCheckBox:disabled {
 }
 QGroupBox {
     color: #000000;
-    border: 1px solid #cccccc;
+    border: 1px solid #b0b0b0;
     border-radius: 4px;
-    margin-top: 1ex;
+    margin-top: 16px;
+    padding: 16px 8px 8px 8px;
+    background-color: #ffffff;
 }
 QGroupBox::title {
     subcontrol-origin: margin;
-    left: 10px;
-    padding: 0 5px 0 5px;
+    subcontrol-position: top left;
+    left: 8px;
+    padding: 0 4px;
+    background-color: #ffffff;
 }
 QGroupBox:disabled {
     color: #666666;
@@ -95,6 +99,51 @@ QComboBox:disabled {
     background-color: #cccccc;
     color: #666666;
     border-color: #cccccc;
+}
+QSpinBox {
+    background-color: #ffffff;
+    color: #000000;
+    border: 1px solid #b0b0b0;
+    padding: 2px 22px 2px 6px;
+    min-height: 26px;
+}
+QSpinBox::up-button {
+    subcontrol-origin: border;
+    subcontrol-position: top right;
+    width: 20px;
+    border-left: 1px solid #b0b0b0;
+    border-bottom: 1px solid #b0b0b0;
+    background: #f0f0f0;
+}
+QSpinBox::down-button {
+    subcontrol-origin: border;
+    subcontrol-position: bottom right;
+    width: 20px;
+    border-left: 1px solid #b0b0b0;
+    background: #f0f0f0;
+}
+QSpinBox::up-button:hover, QSpinBox::down-button:hover {
+    background: #e0e0e0;
+}
+QSpinBox::up-arrow, QSpinBox::down-arrow {
+    width: 8px;
+    height: 8px;
+}
+QTableWidget {
+    background-color: #ffffff;
+    color: #000000;
+    border: 1px solid #b0b0b0;
+    gridline-color: #cccccc;
+    alternate-background-color: #f4f4f4;
+}
+QSplitter::handle {
+    background: #b0b0b0;
+}
+QHeaderView::section {
+    background-color: #f0f0f0;
+    color: #000000;
+    border: 1px solid #cccccc;
+    padding: 4px;
 }
 """
 
@@ -155,14 +204,18 @@ QCheckBox:disabled {
 }
 QGroupBox {
     color: #ffffff;
-    border: 1px solid #777777;
+    border: 1px solid #888888;
     border-radius: 4px;
-    margin-top: 1ex;
+    margin-top: 16px;
+    padding: 16px 8px 8px 8px;
+    background-color: #2b2b2b;
 }
 QGroupBox::title {
     subcontrol-origin: margin;
-    left: 10px;
-    padding: 0 5px 0 5px;
+    subcontrol-position: top left;
+    left: 8px;
+    padding: 0 4px;
+    background-color: #2b2b2b;
 }
 QGroupBox:disabled {
     color: #999999;
@@ -195,5 +248,50 @@ QComboBox:disabled {
     background-color: #2b2b2b;
     color: #999999;
     border-color: #777777;
+}
+QSpinBox {
+    background-color: #3c3c3c;
+    color: #ffffff;
+    border: 1px solid #888888;
+    padding: 2px 22px 2px 6px;
+    min-height: 26px;
+}
+QSpinBox::up-button {
+    subcontrol-origin: border;
+    subcontrol-position: top right;
+    width: 20px;
+    border-left: 1px solid #888888;
+    border-bottom: 1px solid #888888;
+    background: #555555;
+}
+QSpinBox::down-button {
+    subcontrol-origin: border;
+    subcontrol-position: bottom right;
+    width: 20px;
+    border-left: 1px solid #888888;
+    background: #555555;
+}
+QSpinBox::up-button:hover, QSpinBox::down-button:hover {
+    background: #666666;
+}
+QSpinBox::up-arrow, QSpinBox::down-arrow {
+    width: 8px;
+    height: 8px;
+}
+QTableWidget {
+    background-color: #3c3c3c;
+    color: #ffffff;
+    border: 1px solid #888888;
+    gridline-color: #555555;
+    alternate-background-color: #333333;
+}
+QSplitter::handle {
+    background: #888888;
+}
+QHeaderView::section {
+    background-color: #2b2b2b;
+    color: #ffffff;
+    border: 1px solid #555555;
+    padding: 4px;
 }
 """

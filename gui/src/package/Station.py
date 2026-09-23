@@ -1,8 +1,27 @@
-STATION_ID = [b"0", b"1", b"2", b"3", b"4", b"5", b"6"]
-STATION_ID_NAMES = ["0x100", "0x101", "0x102", "0x103", "0x104", "0x105", "0x106"]
+# LED frames store the group index in 3 bits (0..7).
+MIN_GROUP_COUNT = 1
+MAX_GROUP_COUNT = 8
+DEFAULT_GROUP_COUNT = 7
+BASE_CAN_ID = 0x100
+
 STATION_ANGLES = [b"R", b"C", b"O"]
-STATION_ANGLES_COUNT = STATION_ANGLES.__len__()
-STATION_COUNT = STATION_ID.__len__()
+STATION_ANGLES_COUNT = len(STATION_ANGLES)
+
+
+def clamp_group_count(count: int) -> int:
+    return max(MIN_GROUP_COUNT, min(MAX_GROUP_COUNT, int(count)))
+
+
+def group_can_id(index: int) -> int:
+    return BASE_CAN_ID + index
+
+
+def group_label(index: int) -> str:
+    return f"0x{group_can_id(index):03X}"
+
+
+def group_id_bytes(index: int) -> bytes:
+    return str(index).encode("ascii")
 
 
 class Station:

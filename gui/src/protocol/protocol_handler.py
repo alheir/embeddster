@@ -1,32 +1,25 @@
 import logging
 from typing import Any
 
-from src.package.Station import STATION_COUNT
+from src.package.Station import MAX_GROUP_COUNT
 
 
 class ProtocolHandler:
-    """
-    Clase intermedia para manejar el protocolo de comunicación serial.
-
-    Qué se debe implementar:
-      - Framing y parseo en on_bytes(): acumular bytes, detectar fin de mensaje,
-        validar y convertir a una estructura uniforme para la GUI según lo especificado.
-      - Construcción de mensajes salientes en build_led_command().
-    """
+    """Parse serial bytes into GUI messages, and build LED commands."""
 
     def __init__(self) -> None:
-        self.buffer = b""  # Buffer for accumulating incoming data
-        logging.info("[ProtocolHandler] Inicializado. Listo para recibir bytes del puerto serie.")
+        self.buffer = b""
+        logging.info("[ProtocolHandler] Ready")
 
     def on_bytes(self, data: bytes) -> list[dict[str, Any]]:
-        """
-        Recibe bytes crudos desde el puerto serie y devuelve a la GUI una lista de mensajes parseados.
+        """Parse raw serial bytes into messages.
 
-        Debe devolver: lista de mensajes. Cada mensaje es un dict con:
-          - Para ángulos: 'type': 'angle', 'station_index': int, 'angle': int, 'value': int, 'can_id': int, 'data': bytes
-          - Para LEDs: 'type': 'led', 'station_index': int, 'r': bool, 'g': bool, 'b': bool, 'can_id': int, 'data': bytes
+        Return [] when the buffer has no complete line.
 
-        Lista vacía si no hay frames completos.
+        Angle keys: type "angle", station_index, angle
+        (0 roll, 1 pitch, 2 yaw), value, can_id, data.
+
+        LED keys: type "led", station_index, r, g, b, can_id, data.
         """
         self.buffer += data
         messages = []
@@ -66,7 +59,7 @@ class ProtocolHandler:
                         ascii_part = data_part.split("=")[2].strip("'")
                         if len(ascii_part) >= 2 and ascii_part[0] in "RCO":
                             station_index = can_id - 0x100
-                            if 0 <= station_index < STATION_COUNT:
+                            if 0 <= station_index < MAX_GROUP_COUNT:
                                 angle_char = ascii_part[0]
                                 value_str = ascii_part[1:]
                                 try:
@@ -98,15 +91,9 @@ class ProtocolHandler:
         return messages
 
     def build_led_command(self, station_index: int, r: bool, g: bool, b: bool) -> bytes:
-        """
-        Construye los bytes a enviar por serial para comandar LEDs de una estación.
+        """Serial bytes for one LED command.
 
-        Parámetros:
-          - station_index: int (0..N-1)
-          - r, g, b: bools que indican encendido de cada color
-
-        Debe devolver:
-          - bytes listos para write() del puerto serie.
+        station_index is 0..N-1. r, g, and b are on or off.
         """
 
         cmd = f"LED_{station_index}_{int(r)}_{int(g)}_{int(b)}\n"

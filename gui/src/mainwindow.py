@@ -2,11 +2,17 @@ import logging
 import time
 
 import serial
-from PyQt6.QtCore import QTimer
-from PyQt6.QtWidgets import QMainWindow, QMessageBox
+from PyQt6.QtCore import QSettings, QTimer
+from PyQt6.QtWidgets import QCheckBox, QLabel, QMainWindow, QMessageBox
 from serial.serialutil import SerialException
 from serial.tools.list_ports import comports
-from src.package.Station import STATION_COUNT, STATION_ID, STATION_ID_NAMES, Station
+from src.package.Station import (
+    DEFAULT_GROUP_COUNT,
+    MAX_GROUP_COUNT,
+    Station,
+    group_id_bytes,
+    group_label,
+)
 from src.protocol.protocol_handler import ProtocolHandler
 from src.themes import DARK_THEME, LIGHT_THEME
 from src.ui.mainwindow import Ui_MainWindow
@@ -14,18 +20,23 @@ from src.widgets.plot_widget import PlotWidget
 from src.widgets.simulation_widget import SimulationWidget
 from src.widgets.station_info_widget import StationInfoWidget
 
-IDLE_TIMER_MS = 2500  # 2.5s
+IDLE_TIMER_MS = 2500
 RX_TIMER_MS = 10
-LAST_TIME_UPDATE_MS = 1000  # 1s
-SIMULATION_NAME = "⚔️🛠️⚙️Serial Data Emulator⚙️🛠️⚔️"
-HISTORY_LIMIT = 50  # Puntos maximos por plot
+LAST_TIME_UPDATE_MS = 1000
+SIMULATION_NAME = "Serial data emulator"
+HISTORY_LIMIT = 50
 PLOT_UPDATE_MS = 100
+SETTINGS_ORG = "ITBA"
+SETTINGS_APP = "TiltNetworkTool"
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
+        self.COM_gb.setTitle("Serial")
+        self.LED_gb.setTitle("LED")
+        self.label.setText("Group")
 
         self.serialConnected = False
         self.connection_but.clicked.connect(self.toggleSerialConnection)
@@ -35,153 +46,218 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.serial = serial.Serial()
         self.protocol = ProtocolHandler()
         self.simulation_widget = None
+        self.can_console = None
+
+        self.group_ids = self._stored_group_ids()
+        self.oglw.set_group_count(len(self.group_ids))
+
+        self.groups_label = QLabel("Groups")
+        self.horizontalLayout_2.addWidget(self.groups_label)
+        self.group_checks = []
+        for gid in range(MAX_GROUP_COUNT):
+            cb = QCheckBox(str(gid))
+            cb.setChecked(gid in self.group_ids)
+            self.group_checks.append(cb)
+            self.horizontalLayout_2.addWidget(cb)
+            cb.toggled.connect(self._on_group_toggled)
 
         self.stationInfoWidgets = []
+        self.angle_histories = []
+        self.plot_widgets = []
+        self.led_states = []
+        self.last_update_times = []
+        self.stations = []
+        self.timers = []
+        for gid in self.group_ids:
+            self._add_group(gid)
+        self._fill_group_selector()
+
         self.actionFRDM_K64F.triggered.connect(self.selectFRDMModel)
         self.actionPlane.triggered.connect(self.selectPlaneModel)
         self.actionAbout.triggered.connect(self.showAbout)
-
-        # New: Lists to store angle histories (timestamps and values for roll, pitch, yaw per station)
-        self.angle_histories = [
-            [[], [], []] for _ in range(STATION_COUNT)
-        ]  # [station][angle][(timestamp, value)]
-        self.plot_widgets = [None] * STATION_COUNT  # To hold plot widget instances
-        self.led_states = [
-            {"r": False, "g": False, "b": False} for _ in range(STATION_COUNT)
-        ]  # LED states per station
         self.actionToggle_theme.triggered.connect(self.toggleTheme)
         self.current_theme = "light"
 
-        for i in range(len(STATION_ID)):
-            siw = StationInfoWidget(self)
-            self.stationInfoLayout.addWidget(siw)
-            self.stationInfoWidgets.append(siw)
-            # Connect the plot button signal to a slot
-            siw.plotButton.clicked.connect(self.togglePlotForStation(i))
-        self.timers = []
-
-        self.last_update_times = [None] * STATION_COUNT
-
-        # this section builds the network viewer for each station
-        for i, siw in enumerate(self.stationInfoWidgets):
-            siw.setEnabled(False)
-            siw.setName(f"Station {STATION_ID_NAMES[i]}")
-            timer = QTimer()
-            timer.setInterval(IDLE_TIMER_MS)
-            timer.setSingleShot(True)
-            timer.timeout.connect(self.buildStationTimeout(i))
-            timer.start()
-            self.timers.append(timer)
-
-        self.stations = []
-        for x in range(STATION_COUNT):
-            self.stations.append(Station(id=STATION_ID[x]))
-
-        # checks RX buffer every RX_TIMER_MS ms
         timer = QTimer()
         timer.setInterval(RX_TIMER_MS)
-        timer.setSingleShot(False)
         timer.timeout.connect(self.receive)
         timer.start()
         self.rxTimer = timer
 
-        # checks last update times every LAST_TIME_UPDATE_MS ms
         update_timer = QTimer()
         update_timer.setInterval(LAST_TIME_UPDATE_MS)
-        update_timer.setSingleShot(False)
         update_timer.timeout.connect(self.updateLastUpdateLabels)
         update_timer.start()
         self.lastUpdateTimer = update_timer
 
-        # New: Timer para actualizar plots periódicamente
         plot_update_timer = QTimer()
         plot_update_timer.setInterval(PLOT_UPDATE_MS)
-        plot_update_timer.setSingleShot(False)
         plot_update_timer.timeout.connect(self.updateOpenPlots)
         plot_update_timer.start()
         self.plotUpdateTimer = plot_update_timer
 
-        self.stationSelector_cb.addItems(STATION_ID_NAMES)
         self.send_pb.clicked.connect(self.sendLEDCommand)
+        self.led_status = QLabel("")
+        self.horizontalLayout.addWidget(self.led_status)
         self.LED_gb.setEnabled(False)
+        self.actionCAN_console.triggered.connect(self.open_can_console)
 
-        self.actionGod_mode.triggered.connect(self.open_god_mode)
-        self.god_mode_widget = None
+    def _stored_group_ids(self) -> list[int]:
+        raw = QSettings(SETTINGS_ORG, SETTINGS_APP).value("groups")
+        if raw:
+            parts = str(raw).replace(";", ",").split(",")
+            ids = []
+            for part in parts:
+                part = part.strip()
+                if not part:
+                    continue
+                try:
+                    gid = int(part)
+                except ValueError:
+                    continue
+                if 0 <= gid < MAX_GROUP_COUNT and gid not in ids:
+                    ids.append(gid)
+            if ids:
+                return ids
+        return list(range(DEFAULT_GROUP_COUNT))
 
-    def buildStationTimeout(self, stationIndex):
-        return lambda: self.disableStationInfoWidget(stationIndex)
+    def _save_group_ids(self) -> None:
+        text = ",".join(str(gid) for gid in self.group_ids)
+        QSettings(SETTINGS_ORG, SETTINGS_APP).setValue("groups", text)
 
-    def disableStationInfoWidget(self, stationIndex):
-        self.stationInfoWidgets[stationIndex].setEnabled(False)
-        self.oglw.setStationInactive(stationIndex)
+    def _add_group(self, group_id: int) -> None:
+        slot = len(self.stationInfoWidgets)
+        siw = StationInfoWidget(self)
+        siw.setEnabled(False)
+        siw.setName(group_label(group_id))
+        siw.plotButton.clicked.connect(self._toggle_plot(slot, group_id))
+        self.stationInfoLayout.addWidget(siw)
+        self.stationInfoWidgets.append(siw)
+        self.angle_histories.append([[], [], []])
+        self.plot_widgets.append(None)
+        self.led_states.append({"r": False, "g": False, "b": False})
+        self.last_update_times.append(None)
+        self.stations.append(Station(id=group_id_bytes(group_id)))
 
-    def togglePlotForStation(self, station_index):
+        timer = QTimer()
+        timer.setInterval(IDLE_TIMER_MS)
+        timer.setSingleShot(True)
+        timer.timeout.connect(lambda idx=slot: self._disable_group(idx))
+        timer.start()
+        self.timers.append(timer)
+
+    def _clear_groups(self) -> None:
+        for plot in self.plot_widgets:
+            if plot is not None:
+                plot.close()
+        for widget in self.stationInfoWidgets:
+            self.stationInfoLayout.removeWidget(widget)
+            widget.deleteLater()
+        for timer in self.timers:
+            timer.stop()
+        self.stationInfoWidgets.clear()
+        self.angle_histories.clear()
+        self.plot_widgets.clear()
+        self.led_states.clear()
+        self.last_update_times.clear()
+        self.stations.clear()
+        self.timers.clear()
+
+    def _fill_group_selector(self) -> None:
+        current = self.stationSelector_cb.currentData()
+        self.stationSelector_cb.blockSignals(True)
+        self.stationSelector_cb.clear()
+        for gid in self.group_ids:
+            self.stationSelector_cb.addItem(group_label(gid), gid)
+        index = self.stationSelector_cb.findData(current)
+        if index >= 0:
+            self.stationSelector_cb.setCurrentIndex(index)
+        self.stationSelector_cb.blockSignals(False)
+
+    def _on_group_toggled(self, _checked: bool) -> None:
+        ids = [i for i, cb in enumerate(self.group_checks) if cb.isChecked()]
+        if not ids:
+            sender = self.sender()
+            if isinstance(sender, QCheckBox):
+                sender.blockSignals(True)
+                sender.setChecked(True)
+                sender.blockSignals(False)
+            return
+        if ids == self.group_ids:
+            return
+        self._clear_groups()
+        self.group_ids = ids
+        for gid in ids:
+            self._add_group(gid)
+        self.oglw.set_group_count(len(ids))
+        self._fill_group_selector()
+        if self.can_console is not None:
+            self.can_console.set_groups(ids)
+        if self.simulation_widget is not None:
+            self.simulation_widget.set_groups(ids)
+        self._save_group_ids()
+
+    def _disable_group(self, station_index: int) -> None:
+        if station_index >= len(self.stationInfoWidgets):
+            return
+        self.stationInfoWidgets[station_index].setEnabled(False)
+        self.oglw.setStationInactive(station_index)
+
+    def _toggle_plot(self, slot: int, group_id: int):
         def toggle():
-            if self.plot_widgets[station_index] is None:
-                self.plot_widgets[station_index] = PlotWidget(
-                    station_index, self.angle_histories[station_index]
-                )
-                self.plot_widgets[station_index].show()
+            if slot >= len(self.plot_widgets):
+                return
+            if self.plot_widgets[slot] is None:
+                self.plot_widgets[slot] = PlotWidget(group_id, self.angle_histories[slot])
+                self.plot_widgets[slot].show()
             else:
-                self.plot_widgets[station_index].close()
-                self.plot_widgets[station_index] = None
+                self.plot_widgets[slot].close()
+                self.plot_widgets[slot] = None
 
         return toggle
 
     def updateOpenPlots(self):
-        for i in range(STATION_COUNT):
-            if self.plot_widgets[i]:
-                self.plot_widgets[i].updatePlot(self.angle_histories[i])
+        for i, plot in enumerate(self.plot_widgets):
+            if plot:
+                plot.updatePlot(self.angle_histories[i])
 
     def processParsedMessage(self, msg: dict):
-        """
-        msg dict esperado (lo produce ProtocolHandler.on_bytes):
-          - station_index: int
-          - angle: int en {0: roll, 1: pitch, 2: yaw}
-          - value: float/int
-        """
+        """Apply one angle sample. Keys: station_index, angle (0 roll, 1 pitch, 2 yaw), value."""
         try:
             station_index = int(msg.get("station_index"))
             angle_id = msg.get("angle")
             value = msg.get("value")
         except Exception as e:
-            logging.warning(f"[MainWindow] Mensaje inválido (faltan campos): {msg} ({e})")
+            logging.warning(f"[MainWindow] Invalid message: {msg} ({e})")
             return
 
         angle_index = self._resolve_angle_index(angle_id)
         if angle_index not in (0, 1, 2):
-            logging.warning(f"[MainWindow] 'angle' no reconocido: {angle_id}")
+            logging.warning(f"[MainWindow] Unknown angle: {angle_id}")
             return
 
-        if station_index < 0 or station_index >= STATION_COUNT:
-            logging.warning(f"[MainWindow] 'station_index' fuera de rango: {station_index}")
+        try:
+            slot = self.group_ids.index(station_index)
+        except ValueError:
             return
 
-        if self.stations[station_index].assignAngle(angle_index, value):
+        if self.stations[slot].assignAngle(angle_index, value):
             current_time = time.time()
-            self.angle_histories[station_index][angle_index].append((current_time, value))
+            history = self.angle_histories[slot][angle_index]
+            history.append((current_time, value))
+            if len(history) > HISTORY_LIMIT:
+                history.pop(0)
 
-            if len(self.angle_histories[station_index][angle_index]) > HISTORY_LIMIT:
-                self.angle_histories[station_index][angle_index].pop(0)
-
-            self.last_update_times[station_index] = time.time()
-            self.timers[station_index].start()
-            self.stationInfoWidgets[station_index].setEnabled(True)
-            self.stationInfoWidgets[station_index].setAngleLabels(
-                self.stations[station_index].angles
-            )
+            self.last_update_times[slot] = current_time
+            self.timers[slot].start()
+            self.stationInfoWidgets[slot].setEnabled(True)
+            self.stationInfoWidgets[slot].setAngleLabels(self.stations[slot].angles)
             self.oglw.setOrientation(
-                station_index,
-                -self.stations[station_index].roll,
-                -self.stations[station_index].pitch,
-                +self.stations[station_index].yaw + 90,
+                slot,
+                -self.stations[slot].roll,
+                -self.stations[slot].pitch,
+                +self.stations[slot].yaw + 90,
             )
-
-            # if self.god_mode_widget and self.god_mode_widget.isVisible():
-            #     # Suponiendo que tienes can_id y data disponibles
-            #     can_id = ...  # Obtener el can_id correspondiente
-            #     data = ...  # Obtener los datos correspondientes
-            #     self.god_mode_widget.on_can_message_received(can_id, data)
 
     def _resolve_angle_index(self, angle_id):
         if isinstance(angle_id, int) and angle_id in (0, 1, 2):
@@ -199,35 +275,29 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     messages = self.protocol.on_bytes(chunk)
                 except NotImplementedError as e:
                     logging.warning(
-                        f"[MainWindow] ProtocolHandler.on_bytes no implementado aún: {e}"
+                        f"[MainWindow] ProtocolHandler.on_bytes is not implemented: {e}"
                     )
                     break
 
                 if not messages:
                     continue
                 for msg in messages:
-                    can_id = msg["can_id"]
-                    data = msg["data"]
+                    if self.can_console and self.can_console.isVisible():
+                        self.can_console.on_can_message_received(msg)
 
-                    # Forward to God Mode if open
-                    if self.god_mode_widget and self.god_mode_widget.isVisible():
-                        self.god_mode_widget.on_can_message_received(msg)
-
-                    # Process angles in main GUI, ignore LEDs
                     if msg["type"] == "angle":
                         self.processParsedMessage(msg)
-
-                    # Process LED state updates
                     elif msg["type"] == "led":
                         station_index = msg["station_index"]
-                        self.led_states[station_index] = {
+                        if station_index not in self.group_ids:
+                            continue
+                        slot = self.group_ids.index(station_index)
+                        self.led_states[slot] = {
                             "r": msg["r"],
                             "g": msg["g"],
                             "b": msg["b"],
                         }
-                        self.stationInfoWidgets[station_index].update_led(
-                            msg["r"], msg["g"], msg["b"]
-                        )
+                        self.stationInfoWidgets[slot].update_led(msg["r"], msg["g"], msg["b"])
 
         except (SerialException, OSError) as e:
             logging.error(f"[MainWindow] Error reading from serial port: {e}")
@@ -238,7 +308,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             port = self.port
             if port == SIMULATION_NAME:
                 self.serialConnected = True
-                # Se le pasa self (mainwindow) para poder llamar a processParsedMessage() bypasseando on_bytes.
                 self.simulation_widget = SimulationWidget(self.protocol, self)
                 self.simulation_widget.show()
             elif port:
@@ -254,36 +323,34 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 except (SerialException, ValueError, OSError) as e:
                     logging.error(f"[MainWindow] Failed to connect to serial port {port}: {e}")
                     QMessageBox.warning(
-                        self, "Connection Error", f"Could not connect to port {port}.\nError: {e}"
+                        self, "Connection error", f"Could not connect to {port}.\n{e}"
                     )
                     self.serialConnected = False
             else:
-                QMessageBox.warning(self, "No Port Selected", "Please select a valid serial port.")
+                QMessageBox.warning(self, "No port", "Select a serial port.")
                 self.serialConnected = False
         else:
             try:
                 if self.simulation_widget:
-                    self.simulation_widget.close()
+                    widget = self.simulation_widget
                     self.simulation_widget = None
+                    widget.close()
                 if self.serial.is_open:
-                    # Send M1 command to put firmware in sniffer mode
                     try:
                         self.serial.write(b"M1\n")
-                        logging.info(
-                            "[MainWindow] Sent M1 command to firmware on serial disconnect"
-                        )
+                        logging.info("[MainWindow] Sent M1 on disconnect")
                     except Exception as e:
-                        logging.warning(f"[MainWindow] Failed to send M1 on serial disconnect: {e}")
+                        logging.warning(f"[MainWindow] Failed to send M1 on disconnect: {e}")
 
                     self.serial.close()
-                    logging.info("[MainWindow] Disconnected from serial port")
+                    logging.info("[MainWindow] Disconnected")
             except SerialException as e:
                 logging.warning(f"[MainWindow] Error closing serial port: {e}")
             self.serialConnected = False
-            self.angle_histories = [[[], [], []] for _ in range(STATION_COUNT)]
-
-            self.led_states = [{"r": False, "g": False, "b": False} for _ in range(STATION_COUNT)]
-            for i, siw in enumerate(self.stationInfoWidgets):
+            n = len(self.group_ids)
+            self.angle_histories = [[[], [], []] for _ in range(n)]
+            self.led_states = [{"r": False, "g": False, "b": False} for _ in range(n)]
+            for siw in self.stationInfoWidgets:
                 siw.update_led(False, False, False)
 
         self.configPortSettings(self.serialConnected)
@@ -291,22 +358,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def configPortSettings(self, connected=False):
         self.COM_gb.setEnabled(not connected)
         self.LED_gb.setEnabled(connected)
-        if connected:
-            self.connection_but.setText("Disconnect")
-        else:
-            self.connection_but.setText("Connect")
+        if not connected:
+            self.led_status.setText("")
+        self.connection_but.setText("Disconnect" if connected else "Connect")
 
     def updateAvailablePorts(self):
         self.port_cb.clear()
-        for port, desc, hwid in comports():
+        for port, desc, _hwid in comports():
             self.port_cb.addItem(f"{port} - {desc}")
         self.port_cb.addItem(SIMULATION_NAME)
 
     def getPort(self):
         text = self.port_cb.currentText()
         if text:
-            port = text.split(" - ")[0]
-            return port
+            return text.split(" - ")[0]
         return None
 
     def selectFRDMModel(self):
@@ -327,51 +392,68 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def sendLEDCommand(self):
         if (self.port != SIMULATION_NAME) and (not self.serialConnected or not self.serial.is_open):
-            QMessageBox.warning(self, "Not Connected", "Please connect to a serial port first.")
+            QMessageBox.warning(self, "Not connected", "Connect to a serial port first.")
             return
 
-        self.selected_station_index = STATION_ID_NAMES.index(self.stationSelector_cb.currentText())
+        group_id = self.stationSelector_cb.currentData()
+        if group_id is None:
+            return
+        self.selected_station_index = group_id
         self.selected_r = self.r_checkb.isChecked()
         self.selected_g = self.g_checkb.isChecked()
         self.selected_b = self.b_checkb.isChecked()
 
         try:
             message = self.protocol.build_led_command(
-                self.selected_station_index, self.selected_r, self.selected_g, self.selected_b
+                group_id, self.selected_r, self.selected_g, self.selected_b
             )
         except NotImplementedError as e:
-            logging.warning(
-                f"[MainWindow] ProtocolHandler.build_led_command no implementado aún: {e}"
-            )
+            logging.warning(f"[MainWindow] build_led_command is not implemented: {e}")
             return
         except Exception as e:
-            logging.error(f"[MainWindow] Error construyendo LED cmd: {e}")
-            QMessageBox.warning(self, "Command Build Error", f"Failed to build LED command: {e}")
+            logging.error(f"[MainWindow] Error building LED command: {e}")
+            QMessageBox.warning(self, "Command error", f"Failed to build LED command: {e}")
             return
 
         if not message:
-            logging.warning("[MainWindow] build_led_command devolvió vacío/None, no se envía nada.")
-            QMessageBox.information(self, "No Command", "No command to send.")
+            logging.warning("[MainWindow] build_led_command returned nothing.")
+            QMessageBox.information(self, "No command", "Nothing to send.")
             return
 
         try:
             self.serial.write(message)
-            logging.debug(f"[MainWindow] Enviado {len(message)} bytes: {message}")
+            logging.debug(f"[MainWindow] Sent {len(message)} bytes: {message}")
+            channels = "".join(
+                name
+                for name, on in (
+                    ("R", self.selected_r),
+                    ("G", self.selected_g),
+                    ("B", self.selected_b),
+                )
+                if on
+            )
+            self.led_status.setText(f"Sent {group_label(group_id)} {channels or 'off'}")
+            if self.can_console is not None and self.can_console.isVisible():
+                self.can_console.note_led(
+                    group_id, self.selected_r, self.selected_g, self.selected_b
+                )
         except (SerialException, OSError) as e:
-            logging.error(f"[MainWindow] Error enviando por serial: {e}")
-            QMessageBox.warning(self, "Send Error", f"Failed to send command: {e}")
+            logging.error(f"[MainWindow] Send error: {e}")
+            QMessageBox.warning(self, "Send error", f"Failed to send command: {e}")
 
     def showAbout(self):
         about_text = """
         <h2>Tilt Network Tool</h2>
-        <p>Tool for monitoring a tilt sensor network.</p>
-        <p>This is a support tool for the course 25.27 - Embedded Systems at ITBA (Electronic Engineering degree), for the serial communication practical work, where multiple FRDM-K64F-based stations report their tilt using their accelerometers, through a shared CAN bus.</p>
-        <p><b>Credits:</b></p>
+        <p>Monitor for a CAN tilt network.</p>
+        <p>Support tool for 25.27 Embedded Systems at ITBA.
+        FRDM-K64F stations report roll, pitch, and yaw on a shared CAN bus.</p>
+        <p><b>Credits</b></p>
         <ul>
-            <li>Eng. Juan Francisco Sbruzzi (original TiltNetworkTool, 🏆🏆🏆)</li>
-            <li>Alejandro Nahuel Heir (adaptation, current dev)</li>
+            <li>Juan Francisco Sbruzzi (original TiltNetworkTool)</li>
+            <li>Alejandro Nahuel Heir</li>
         </ul>
-        <p><b>Source:</b> <a href="https://github.com/alheir/TiltNetworkTool" style="color:green;">github.com/alheir/TiltNetworkTool</a></p>
+        <p><b>Source</b>
+        <a href="https://github.com/alheir/TiltNetworkTool">github.com/alheir/TiltNetworkTool</a></p>
         """
         QMessageBox.about(self, "About", about_text)
 
@@ -379,35 +461,31 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         current_time = time.time()
         for i, last_time in enumerate(self.last_update_times):
             if last_time is not None:
-                seconds_ago = current_time - last_time
-                self.stationInfoWidgets[i].setLastUpdateTime(seconds_ago)
+                self.stationInfoWidgets[i].setLastUpdateTime(current_time - last_time)
             else:
                 self.stationInfoWidgets[i].setLastUpdateTime(None)
 
     def closeEvent(self, event):
-        # If God Mode is open, send reset commands to firmware before closing
         if (
-            self.god_mode_widget
-            and self.god_mode_widget.isVisible()
+            self.can_console
+            and self.can_console.isVisible()
             and self.serialConnected
             and self.serial.is_open
         ):
             try:
                 self.serial.write(b"MODE_NORMAL\n")
                 self.serial.write(b"M1\n")
-                logging.info(
-                    "[MainWindow] Sent reset command to firmware on app close: NORMAL mode"
-                )
+                logging.info("[MainWindow] Sent reset on close")
             except Exception as e:
-                logging.warning(f"[MainWindow] Failed to send reset commands on app close: {e}")
+                logging.warning(f"[MainWindow] Failed to send reset on close: {e}")
 
-        # Close widgets
         if self.simulation_widget:
-            self.simulation_widget.close()
-        if self.god_mode_widget:
-            self.god_mode_widget.close()
+            widget = self.simulation_widget
+            self.simulation_widget = None
+            widget.close()
+        if self.can_console:
+            self.can_console.close()
 
-        # Close serial
         try:
             if self.serial.is_open:
                 self.serial.close()
@@ -428,25 +506,24 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.current_theme = "light"
         self.setTheme(self.current_theme)
 
-    def open_god_mode(self):
+    def open_can_console(self):
         if not self.serialConnected or self.port == SIMULATION_NAME:
             QMessageBox.warning(
                 self,
-                "Connection Required",
-                "Please connect to a real serial port (not the emulator) to open God Mode.",
+                "Connection required",
+                "Connect to a serial port to open the CAN console.",
             )
             return
-        if self.god_mode_widget is None:
-            from src.widgets.god_mode_widget import GodModeWidget
+        if self.can_console is None:
+            from src.widgets.can_console import CanConsole
 
-            self.god_mode_widget = GodModeWidget(self)
-        self.god_mode_widget.show()
-        self.god_mode_widget.raise_()
-        self.god_mode_widget.activateWindow()
+            self.can_console = CanConsole(self)
+        self.can_console.show()
+        self.can_console.raise_()
+        self.can_console.activateWindow()
 
-        # Send M1 command to put firmware in sniffer mode
         try:
             self.serial.write(b"M1\n")
-            logging.info("[MainWindow] Sent M1 command to firmware on God Mode open")
+            logging.info("[MainWindow] Sent M1 on CAN console open")
         except Exception as e:
-            logging.warning(f"[MainWindow] Failed to send M1 on God Mode open: {e}")
+            logging.warning(f"[MainWindow] Failed to send M1 on CAN console open: {e}")
