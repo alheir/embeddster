@@ -1,0 +1,16 @@
+# West workspace for the Embeddster Zephyr firmware.
+# Zephyr itself is not vendored. From the git checkout:
+#   uv run west init -l <repo> --mf fw-zephyr/west.yml
+#   uv run west update
+# See README.md.
+
+manifest:
+  remotes:
+    - name: zephyrproject-rtos
+      url-base: https://github.com/zephyrproject-rtos
+
+  projects:
+    - name: zephyr
+      remote: zephyrproject-rtos
+      revision: v4.4.2
+      import: true
