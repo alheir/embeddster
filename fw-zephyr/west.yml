@@ -13,4 +13,7 @@ manifest:
     - name: zephyr
       remote: zephyrproject-rtos
       revision: v4.4.2
-      import: true
+      import:
+        name-allowlist:
+          - cmsis_6
+          - hal_espressif

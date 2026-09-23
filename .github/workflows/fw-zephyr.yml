@@ -28,10 +28,16 @@ jobs:
           app-path: fw-zephyr
           toolchains: xtensa-espressif_esp32_zephyr-elf
           sdk-version: ${{ env.ZEPHYR_SDK_VERSION }}
-          ccache-cache-key: ${{ runner.os }}-fw-zephyr
+          ccache-cache-key: fw-zephyr
+
+      - name: Cache Espressif HAL blobs
+        uses: actions/cache@v6
+        with:
+          path: modules/hal/espressif/zephyr/blobs
+          key: espressif-blobs-v1
 
       - name: Fetch Espressif HAL blobs
         run: west blobs fetch hal_espressif
 
       - name: Build
-        run: west build -b ${{ env.BOARD }} --pristine fw-zephyr
+        run: west build -b ${{ env.BOARD }} fw-zephyr
