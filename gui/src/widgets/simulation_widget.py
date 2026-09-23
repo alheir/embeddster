@@ -1,14 +1,16 @@
-from PyQt6 import QtWidgets, QtCore
-from src.protocol.protocol_handler import ProtocolHandler
-from src.package.Station import STATION_COUNT, STATION_ANGLES_COUNT, STATION_ID
 import math
 import time
 
+from PyQt6 import QtCore, QtWidgets
+from src.package.Station import STATION_ANGLES_COUNT, STATION_COUNT, STATION_ID
+from src.protocol.protocol_handler import ProtocolHandler
+
 AUTOSEND_INTERVAL_MS = 200
+
 
 class SimulationWidget(QtWidgets.QWidget):
     def __init__(self, protocol: ProtocolHandler, main_window, parent=None):
-        super(SimulationWidget, self).__init__(parent)
+        super().__init__(parent)
         self.protocol = protocol
         self.main_window = main_window
         self.setWindowTitle("Serial Data Emulator")
@@ -19,15 +21,17 @@ class SimulationWidget(QtWidgets.QWidget):
         self.format_cb.addItems(["ASCII", "Hex", "Binary", "Raw Bytes"])
         self.format_cb.currentTextChanged.connect(self.update_placeholder)
         self.send_btn = QtWidgets.QPushButton("Send", clicked=self.send_simulated_data)
-        self.auto_mode_cb = QtWidgets.QCheckBox("Toggle autosend mode, bypassing protocol_handler", toggled=self.toggle_auto_mode)
+        self.auto_mode_cb = QtWidgets.QCheckBox(
+            "Toggle autosend mode, bypassing protocol_handler", toggled=self.toggle_auto_mode
+        )
 
         self.station_checkboxes = []
         station_layout = QtWidgets.QHBoxLayout()
         station_layout.addWidget(QtWidgets.QLabel("Stations:"))
         for i, sid in enumerate(STATION_ID):
-            cb = QtWidgets.QCheckBox(sid.decode('utf-8'))
+            cb = QtWidgets.QCheckBox(sid.decode("utf-8"))
             cb.setChecked(True if i == 0 else False)  # Simula solo estación 0 por defecto
-            cb.setEnabled(False) 
+            cb.setEnabled(False)
             self.station_checkboxes.append(cb)
             station_layout.addWidget(cb)
 
@@ -65,15 +69,15 @@ class SimulationWidget(QtWidgets.QWidget):
         format_type = self.format_cb.currentText()
         try:
             if format_type == "ASCII":
-                data = text.encode('utf-8')
+                data = text.encode("utf-8")
             elif format_type == "Hex":
-                data = bytes.fromhex(text.replace(' ', ''))
+                data = bytes.fromhex(text.replace(" ", ""))
             elif format_type == "Binary":
                 bin_values = []
                 for b in text.split():
                     val = int(b, 2)
                     if val > 255 or val < 0:
-                        raise ValueError(f'Binary value {b} exceeds byte range (0-255)')
+                        raise ValueError(f"Binary value {b} exceeds byte range (0-255)")
                     bin_values.append(val)
                 data = bytes(bin_values)
             elif format_type == "Raw Bytes":
@@ -81,7 +85,7 @@ class SimulationWidget(QtWidgets.QWidget):
                 for b in text.split():
                     val = int(b)
                     if not (0 <= val <= 255):
-                        raise ValueError(f'Raw byte value {b} must be 0-255')
+                        raise ValueError(f"Raw byte value {b} must be 0-255")
                     raw_bytes.append(val)
                 data = bytes(raw_bytes)
             else:
@@ -89,7 +93,7 @@ class SimulationWidget(QtWidgets.QWidget):
         except ValueError as e:
             self.output_te.append(f"Error parsing input: {e}")
             return
-        
+
         self.output_te.append(f"Sending raw bytes (hex): {data.hex()}")
         try:
             messages = self.protocol.on_bytes(data)  # Parsea el mensaje según protocol_handler
@@ -107,7 +111,9 @@ class SimulationWidget(QtWidgets.QWidget):
         if checked:
             self.start_time = time.time()
             self.auto_timer.start()
-            self.output_te.append(f"Autosend ON, sending sinusoidal data every {AUTOSEND_INTERVAL_MS} ms")
+            self.output_te.append(
+                f"Autosend ON, sending sinusoidal data every {AUTOSEND_INTERVAL_MS} ms"
+            )
         else:
             self.auto_timer.stop()
             self.output_te.append("Autosend OFF")
@@ -123,11 +129,7 @@ class SimulationWidget(QtWidgets.QWidget):
                 # sin(tiempo + offset) * 90
                 offset = (station_idx * 0.5) + (angle_idx * 0.3)  # Offset por estación/ángulo
                 value = int(math.sin(current_time + offset) * 90)
-                msg = {
-                    'station_index': station_idx,
-                    'angle': angle_idx,
-                    'value': value
-                }
+                msg = {"station_index": station_idx, "angle": angle_idx, "value": value}
                 messages.append(msg)
 
                 # Bypass ProtocolHandler

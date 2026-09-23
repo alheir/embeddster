@@ -1,9 +1,9 @@
-
-STATION_ID = [b'0', b'1', b'2', b'3', b'4', b'5', b'6']
-STATION_ID_NAMES = ['0x100', '0x101', '0x102', '0x103', '0x104', '0x105', '0x106']
-STATION_ANGLES = [b'R', b'C', b'O']
+STATION_ID = [b"0", b"1", b"2", b"3", b"4", b"5", b"6"]
+STATION_ID_NAMES = ["0x100", "0x101", "0x102", "0x103", "0x104", "0x105", "0x106"]
+STATION_ANGLES = [b"R", b"C", b"O"]
 STATION_ANGLES_COUNT = STATION_ANGLES.__len__()
 STATION_COUNT = STATION_ID.__len__()
+
 
 class Station:
     def __init__(self, id, roll=0, pitch=0, yaw=0):
@@ -20,7 +20,7 @@ class Station:
 
     def assignAngle(self, angleIdentifier, value):
         try:
-            if(isinstance(angleIdentifier, bytes)):
+            if isinstance(angleIdentifier, bytes):
                 angleIndex = STATION_ANGLES.index(angleIdentifier)
             else:
                 angleIndex = angleIdentifier

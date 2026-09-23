@@ -9,7 +9,7 @@
 from PyQt6 import QtCore, QtGui, QtWidgets
 
 
-class Ui_MainWindow(object):
+class Ui_MainWindow:
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(1147, 481)
@@ -23,7 +23,9 @@ class Ui_MainWindow(object):
         self.stationInfoLayout.setObjectName("stationInfoLayout")
         self.gridLayout_18.addLayout(self.stationInfoLayout, 7, 0, 1, 7)
         self.oglw = FrdmViewerWidget(parent=self.centralwidget)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Expanding)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Expanding
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.oglw.sizePolicy().hasHeightForWidth())
@@ -31,7 +33,9 @@ class Ui_MainWindow(object):
         self.oglw.setObjectName("oglw")
         self.gridLayout_18.addWidget(self.oglw, 6, 0, 1, 7)
         self.connection_but = QtWidgets.QPushButton(parent=self.centralwidget)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Fixed)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Fixed
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.connection_but.sizePolicy().hasHeightForWidth())
@@ -40,7 +44,9 @@ class Ui_MainWindow(object):
         self.connection_but.setObjectName("connection_but")
         self.gridLayout_18.addWidget(self.connection_but, 0, 1, 1, 1)
         self.LED_gb = QtWidgets.QGroupBox(parent=self.centralwidget)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Preferred)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Preferred
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.LED_gb.sizePolicy().hasHeightForWidth())
@@ -70,11 +76,15 @@ class Ui_MainWindow(object):
         self.horizontalLayout.addWidget(self.send_pb)
         self.horizontalLayout_4.addLayout(self.horizontalLayout)
         self.gridLayout_18.addWidget(self.LED_gb, 0, 3, 1, 1)
-        spacerItem = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Minimum)
+        spacerItem = QtWidgets.QSpacerItem(
+            40, 20, QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Minimum
+        )
         self.gridLayout_18.addItem(spacerItem, 0, 2, 1, 1)
         self.COM_gb = QtWidgets.QGroupBox(parent=self.centralwidget)
         self.COM_gb.setEnabled(True)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Preferred)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Preferred
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.COM_gb.sizePolicy().hasHeightForWidth())
@@ -209,4 +219,6 @@ class Ui_MainWindow(object):
         self.actionAbout.setText(_translate("MainWindow", "About"))
         self.actionToggle_theme.setText(_translate("MainWindow", "Toggle theme"))
         self.actionGod_mode.setText(_translate("MainWindow", "God mode"))
+
+
 from src.widgets.frdm_viewer_widget import FrdmViewerWidget

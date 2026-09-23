@@ -1,4 +1,3 @@
-
 LIGHT_THEME = """
 QWidget {
     background-color: #ffffff;
