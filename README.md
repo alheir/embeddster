@@ -212,29 +212,36 @@ La GUI proporciona una interfaz visual para interactuar con las estaciones CAN, 
 
 ### Instalación y Configuración
 
-1. **Crear entorno virtual** (en el directorio del proyecto):
+Requiere **Python 3.11 o 3.12**.
+
+**Con uv (recomendado):**
+
+```bash
+cd gui
+uv sync
+uv run python main.py
+```
+
+**Sin uv (alternativa):**
+
+1. Crear entorno virtual en `gui/`:
    ```bash
+   cd gui
    python -m venv .venv
    ```
 
-2. **Activar el entorno virtual**:
-   - Windows:
-     ```bash
-     .venv\Scripts\activate
-     ```
-   - Linux/Mac:
-     ```bash
-     source .venv/bin/activate
-     ```
+2. Activar el entorno virtual:
+   - Windows: `.venv\Scripts\activate`
+   - Linux/Mac: `source .venv/bin/activate`
 
-3. **Instalar dependencias**:
+3. Instalar dependencias:
    ```bash
-   pip install -r gui/requirements.txt
+   pip install -r requirements.txt
    ```
 
-4. **Ejecutar la aplicación**:
+4. Ejecutar la aplicación:
    ```bash
-   python gui/main.py
+   python main.py
    ```
 
 ### Modo Normal
@@ -297,7 +304,9 @@ embeddster/
 │   │   ├── mainwindow.py  # Ventana principal
 │   │   ├── protocol/      # ProtocolHandler para parseo de mensajes
 │   │   └── widgets/       # God Mode, plots, visualizador 3D
-│   └── requirements.txt   # Dependencias Python
+│   ├── pyproject.toml     # Dependencias y config (uv/ruff)
+│   ├── uv.lock            # Versiones fijadas (uv)
+│   └── requirements.txt   # Export para pip (generado)
 ├── hw/                    # Diseño PCB (KiCad)
 │   └── kicad/             # Esquemáticos y layout
 ├── docs/                  # Imágenes para README
