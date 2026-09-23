@@ -1,0 +1,12 @@
+# Experimental web GUI (feat/web-gui branch)
+/web/
+
+# KiCad local editor history
+/hw/kicad/.history/
+
+# West workspace (if initialized with this repo as topdir)
+/.west/
+/zephyr/
+/modules/
+/bootloader/
+/tools/

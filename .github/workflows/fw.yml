@@ -1,12 +1,7 @@
 name: Firmware
 
 on:
-  pull_request:
-    paths:
-      - "fw/**"
-      - ".github/workflows/fw.yml"
   push:
-    branches: [main]
     paths:
       - "fw/**"
       - ".github/workflows/fw.yml"

@@ -1,0 +1,17 @@
+[project]
+name = "embeddster-fw-zephyr"
+version = "0.1.0"
+description = "Host tools to configure, build, and flash the Embeddster Zephyr firmware"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "west>=1.2",
+    "pyelftools>=0.29",
+    "pykwalify",
+    "jsonschema",
+    "esptool>=5.0.2",
+    "ninja",
+]
+
+[tool.uv]
+package = false

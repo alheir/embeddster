@@ -1,0 +1,34 @@
+/*
+ * Embeddster PCB wiring on ESP32 DOIT DevKit V1 (VSPI / SPI3).
+ * Pins match fw/include/pin_assignment.h:
+ *   MOSI 23, MISO 19, SCK 18, CS 5, MCP INT 17
+ */
+
+/ {
+	chosen {
+		zephyr,canbus = &mcp2515;
+	};
+
+	aliases {
+		led0 = &led0;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		led0: led_0 {
+			gpios = <&gpio0 2 GPIO_ACTIVE_HIGH>;
+			label = "Onboard LED";
+		};
+	};
+};
+
+&spi3 {
+	mcp2515: mcp2515@0 {
+		compatible = "microchip,mcp2515";
+		reg = <0>;
+		spi-max-frequency = <1000000>;
+		int-gpios = <&gpio0 17 GPIO_ACTIVE_LOW>;
+		osc-freq = <16000000>;
+		bitrate = <125000>;
+	};
+};

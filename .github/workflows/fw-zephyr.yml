@@ -1,0 +1,43 @@
+name: Firmware (Zephyr)
+
+on:
+  push:
+    paths:
+      - "fw-zephyr/**"
+      - ".github/workflows/fw-zephyr.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    env:
+      ZEPHYR_SDK_VERSION: "1.0.1"
+      BOARD: esp32_devkitc/esp32/procpu
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Set up Zephyr workspace
+        uses: zephyrproject-rtos/action-zephyr-setup@v1
+        with:
+          app-path: fw-zephyr
+          toolchains: xtensa-espressif_esp32_zephyr-elf
+          sdk-version: ${{ env.ZEPHYR_SDK_VERSION }}
+          ccache-cache-key: fw-zephyr
+
+      - name: Cache Espressif HAL blobs
+        uses: actions/cache@v6
+        with:
+          path: modules/hal/espressif/zephyr/blobs
+          key: espressif-blobs-v1
+
+      - name: Fetch Espressif HAL blobs
+        run: west blobs fetch hal_espressif
+
+      - name: Build
+        run: west build -b ${{ env.BOARD }} fw-zephyr
